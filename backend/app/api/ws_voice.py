@@ -38,15 +38,26 @@ def _session_config(case) -> dict:
     import json
 
     public = json.loads(case["public_json"])
+
+    # 情绪基调：这个学生处在低落、疲惫、不想多说的状态。
+    # 之前用默认音色 + 中性指令，模型会读得偏积极，所以要显式压下去。
+    mood = (
+        "你的语气是低落、疲惫、没什么力气的。语速偏慢，句尾不要上扬，"
+        "不要用轻快或活泼的语调。回答很短，经常停顿，偶尔叹气，"
+        "不太想谈，但被温和地追问时会一点点松动。"
+    )
+
     return {
         "tts": {
-            "speaker": "zh_male_yunzhou_jupiter_bigtts",
+            # 云舟 2.0：S2S 主打男声，支持指令遵循
+            "speaker": "zh_male_m191_uranus_bigtts",
+            "speech_rate": -8,
             "audio_config": {"channel": 1, "format": "pcm", "sample_rate": 24000},
         },
         "dialog": {
             "bot_name": public.get("alias", "小陈"),
-            "system_role": persona.build_system(case),
-            "speaking_style": "说话简短，语气犹豫，常先否认，被温和追问后才慢慢说。",
+            "system_role": persona.build_system(case) + "\n\n【情绪与语气】" + mood,
+            "speaking_style": mood,
             "extra": {"strict_audit": False},
         },
     }

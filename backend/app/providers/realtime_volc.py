@@ -38,6 +38,9 @@ EVENT_FINISH_CONNECTION = 2
 EVENT_START_SESSION = 100
 EVENT_FINISH_SESSION = 102
 EVENT_TASK_REQUEST = 200
+EVENT_SAY_HELLO = 300
+EVENT_CHAT_TTS_TEXT = 500
+EVENT_CHAT_RAG_TEXT = 502
 
 EVENT_CONNECTION_STARTED = 50
 EVENT_SESSION_STARTED = 150
@@ -200,6 +203,27 @@ class RealtimeVolcSession:
                                         session_id=self.session_id,
                                         message_type=CLIENT_AUDIO_ONLY,
                                         serial=NO_SERIALIZATION))
+
+    async def say_hello(self, content: str) -> None:
+        """让模型主动说一句指定的话（开场用）。"""
+        await self._ws.send(build_frame(EVENT_SAY_HELLO, {"content": content},
+                                        session_id=self.session_id))
+
+    async def send_rag_text(self, content: str) -> None:
+        """会话中注入背景/指令文字，影响模型后续的回应与语气。
+
+        这是「DSH 情绪联动」的落地通道：情绪评估结果通过这里喂给语音模型。
+        """
+        await self._ws.send(build_frame(EVENT_CHAT_RAG_TEXT, {"content": content},
+                                        session_id=self.session_id))
+
+    async def send_tts_text(self, content: str, *, start: bool = False, end: bool = False) -> None:
+        """指定 TTS 直接念出的文字（完全接管台词时用）。"""
+        await self._ws.send(build_frame(
+            EVENT_CHAT_TTS_TEXT,
+            {"start": start, "content": content, "end": end},
+            session_id=self.session_id,
+        ))
 
     async def send_silence(self) -> None:
         """20ms 静音（16k 单声道 → 640 字节）。断麦时保活用。"""

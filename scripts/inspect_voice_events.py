@@ -19,14 +19,22 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1] / "data"
 
 
-def float32_to_int16(pcm: bytes) -> bytes:
-    """float32 PCM → int16 PCM，供 WAV 播放。"""
+def float32_to_int16(pcm: bytes, target_peak_dbfs: float = -3.0) -> bytes:
+    """float32 PCM → int16 PCM，并做响度归一化。
+
+    火山实时语音的输出电平偏低（实测 RMS 约 −39 dBFS），直接播会显得声音小。
+    这里把峰值拉到 −3 dBFS；前端播放时同样要加增益，否则听感不一致。
+    """
     n = len(pcm) // 4
     vals = struct.unpack("<%df" % n, pcm[: n * 4])
+    peak = max((abs(v) for v in vals), default=0.0)
+    gain = 1.0
+    if peak > 0:
+        target = 10 ** (target_peak_dbfs / 20)
+        gain = min(target / peak, 8.0)      # 最多放大 8 倍，避免把噪声抬起来
     out = bytearray()
     for v in vals:
-        s = int(max(-1.0, min(1.0, v)) * 32767)
-        out.extend(struct.pack("<h", s))
+        out.extend(struct.pack("<h", int(max(-1.0, min(1.0, v * gain)) * 32767)))
     return bytes(out)
 
 
@@ -87,7 +95,7 @@ def main() -> None:
         w.setsampwidth(2)
         w.setframerate(24000)
         w.writeframes(float32_to_int16(raw))
-    print(f"\n  已转存 {wav.name}（float32→int16），可双击试听")
+    print(f"\n  已转存 {wav.name}（float32→int16，峰值归一化到 −3 dBFS），可双击试听")
 
     print("\n=== 事件分布（前 8）===")
     c = Counter(e.get("event") for e in events if e.get("type") == "event")
