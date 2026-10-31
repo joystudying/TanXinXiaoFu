@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>谈心小辅 · 语音对话（M1）</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <main class="wrap">
+    <header>
+      <h1>谈心小辅<span>语音对话模块</span></h1>
+      <p class="sub">当前为 M1 阶段：后端骨架 + 会话接口。语音界面在 M3 实现。</p>
+    </header>
+
+    <section class="card">
+      <h2>服务自检</h2>
+      <pre id="health">检测中…</pre>
+    </section>
+
+    <section class="card">
+      <h2>建一个会话</h2>
+      <button id="btnCreate">POST /api/sessions</button>
+      <pre id="createOut">未调用</pre>
+    </section>
+
+    <section class="card">
+      <h2>读回轮次</h2>
+      <button id="btnTurns" disabled>GET /api/sessions/{id}/turns</button>
+      <pre id="turnsOut">先建会话</pre>
+    </section>
+  </main>
+  <script>
+    let lastSession = null;
+    const $ = (s) => document.querySelector(s);
+    const show = (el, v) => { el.textContent = typeof v === 'string' ? v : JSON.stringify(v, null, 2); };
+
+    fetch('/api/health').then(r => r.json()).then(d => show($('#health'), d))
+      .catch(e => show($('#health'), '健康检查失败：' + e));
+
+    $('#btnCreate').onclick = async () => {
+      const r = await fetch('/api/sessions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ case_id: 'c_academic_01', prep_note: '先问睡眠，不急着给建议' })
+      });
+      const d = await r.json();
+      show($('#createOut'), { status: r.status, body: d });
+      if (r.ok) {
+        lastSession = d.session_id;
+        $('#btnTurns').disabled = false;
+      }
+    };
+
+    $('#btnTurns').onclick = async () => {
+      if (!lastSession) return;
+      const r = await fetch('/api/sessions/' + lastSession + '/turns');
+      show($('#turnsOut'), { status: r.status, body: await r.json() });
+    };
+  </script>
+</body>
+</html>

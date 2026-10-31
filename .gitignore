@@ -1,0 +1,16 @@
+# 密钥与运行期数据
+.env
+data/*.db
+data/*.db-*
+data/backups/
+data/*.log
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# 编辑器
+.vscode/
+.idea/
