@@ -6,3 +6,5 @@ pydantic-settings>=2.2
 python-dotenv>=1.0
 pytest>=8.0
 pytest-asyncio>=0.23
+# M3.3 托管语音合成（微软在线神经音色，免密钥）—— 真双工落地前的兜底朗读
+edge-tts>=7.0
