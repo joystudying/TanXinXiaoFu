@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>谈话训练 · 谈心小辅</title>
+    <link rel="stylesheet" href="styles.css" />
+    <script src="shared.js" defer></script>
+  </head>
+  <body data-page="conversation">
+    <a class="skip" href="#main">跳到主要内容</a>
+    <header class="site-header" data-header></header>
+    <main id="main" class="main">
+      <div class="page-heading conversation-heading coach-conversation-heading">
+        <div class="heading-inline">
+          <a class="back-link" href="index.html"><span data-icon="back"></span>场景选择</a>
+          <h1 data-case-title>正在准备训练…</h1>
+        </div>
+        <div class="coach-welcome">
+          <p>慢一点，<br />先听他把话说完。</p>
+          <div class="coach-welcome-portrait" aria-hidden="true">
+            <img src="assets/xiaofu-counselor.png" alt="" width="164" height="188" />
+          </div>
+        </div>
+        <div class="page-heading-tools">
+          <button class="button secondary" id="btnEnd" type="button">
+            结束并查看复盘<span data-icon="arrow"></span>
+          </button>
+        </div>
+      </div>
+
+      <div class="conversation-grid">
+        <section class="surface presence" aria-label="学生与语音操作">
+          <div class="presence-top">
+            <span class="badge"><span class="dot"></span><span data-case-badge>学生</span></span>
+            <button class="text-button" data-toggle-transcript aria-expanded="true" aria-controls="transcript">
+              <span data-icon="file"></span><span>收起记录</span>
+            </button>
+          </div>
+          <img class="presence-photo" src="assets/xiaochen.png" alt="小陈" />
+          <p class="presence-status"><span class="dot"></span><span data-status>正在准备训练…</span></p>
+
+          <div class="current-response" data-current-response hidden>
+            <blockquote data-current-quote></blockquote>
+            <div class="response-footer">
+              <button class="text-button" data-preview-action="学生语音回听">
+                <span data-icon="volume"></span>回听这句
+              </button>
+              <small>学生的回应</small>
+            </div>
+          </div>
+
+          <div class="microphone-area">
+            <div class="wave-row">
+              <span>语音回应</span>
+              <div class="wave" aria-hidden="true">
+                <i style="height: 12px"></i><i style="height: 24px"></i><i style="height: 16px"></i><i
+                  style="height: 32px"
+                ></i
+                ><i style="height: 20px"></i><i style="height: 28px"></i><i style="height: 14px"></i><i
+                  style="height: 36px"
+                ></i
+                ><i style="height: 22px"></i><i style="height: 16px"></i><i style="height: 28px"></i><i
+                  style="height: 20px"
+                ></i
+                ><i style="height: 32px"></i><i style="height: 14px"></i><i style="height: 24px"></i><i
+                  style="height: 12px"
+                ></i>
+              </div>
+              <span data-mic-hint>点击开始</span>
+            </div>
+            <div class="mic-controls">
+              <button class="button" id="btnMic" type="button" disabled>
+                <span data-icon="mic"></span><span data-mic-label>准备中…</span>
+              </button>
+            </div>
+
+            <div class="manual-row">
+              <label class="visually-hidden" for="manualText">打字输入</label>
+              <input id="manualText" type="text" maxlength="500"
+                placeholder="识别不可用时可以直接打字" autocomplete="off" disabled />
+              <button class="button outline" id="btnSend" type="button" disabled>发送</button>
+            </div>
+
+            <div class="presence-bottom">
+              <button class="text-button" data-preview-action="老师录音回听">
+                <span data-icon="headphones"></span>回听上一段录音
+              </button>
+              <a class="text-button" href="details.html"><span data-icon="pen"></span>案例详情</a>
+            </div>
+          </div>
+        </section>
+
+        <aside class="surface transcript" id="transcript" data-transcript aria-label="对话记录">
+          <div class="transcript-heading">
+            <h2>对话记录</h2>
+            <small data-round>第 0 轮</small>
+          </div>
+          <div class="transcript-messages" tabindex="0" aria-label="可滚动的对话内容" data-messages></div>
+          <p class="transcript-caption">回看对话，或继续你的回应。</p>
+        </aside>
+      </div>
+      <p class="preview-notice" data-preview-notice role="status" hidden></p>
+    </main>
+    <footer class="site-footer" data-footer></footer>
+    <script type="module" src="js/conversation.js"></script>
+  </body>
+</html>

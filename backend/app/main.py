@@ -82,14 +82,5 @@ app.include_router(health.router)
 app.include_router(sessions.router)
 app.include_router(chat.router)
 
-
-@app.get("/", include_in_schema=False)
-def _root():
-    """根路径直接给语音页（设计文档 4.4 的文件名是 voice.html）。"""
-    from fastapi.responses import FileResponse
-
-    return FileResponse(settings.frontend_dir / "voice.html")
-
-
-# 静态页挂根路径（必须在 API 路由之后注册）
+# 静态页挂根路径；html=True 会让 "/" 指向 frontend/index.html
 app.mount("/", StaticFiles(directory=str(settings.frontend_dir), html=True), name="static")

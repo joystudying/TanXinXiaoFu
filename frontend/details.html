@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>案例详情 · 谈心小辅</title>
+    <link rel="stylesheet" href="styles.css" />
+    <script src="shared.js" defer></script>
+  </head>
+  <body data-page="selection">
+    <a class="skip" href="#main">跳到主要内容</a>
+    <header class="site-header" data-header></header>
+    <main id="main" class="main">
+      <a class="back-link" href="index.html"><span data-icon="back"></span>返回场景选择</a>
+      <div class="page-heading coach-page-heading">
+        <div>
+          <h1>先了解一下小陈</h1>
+          <p>带着一个想了解的问题，开始这次谈话。</p>
+        </div>
+        <div class="coach-welcome">
+          <p>先了解他的处境，<br />不用急着下结论。</p>
+          <div class="coach-welcome-portrait" aria-hidden="true">
+            <img src="assets/xiaofu-counselor.png" alt="" width="164" height="188" />
+          </div>
+        </div>
+        <span class="badge">学业困难</span>
+      </div>
+      <div class="detail-layout">
+        <aside class="surface student-profile">
+          <img class="profile-photo" src="assets/xiaochen.png" alt="小陈" />
+          <h2>小陈</h2>
+          <p class="student-meta">大二 · 电气工程及其自动化</p>
+          <blockquote>“去了也听不懂，<br />反正都一样。”</blockquote>
+          <p class="profile-bottom">建议练习时长：5–8分钟</p>
+        </aside>
+        <section class="surface detail-content" aria-label="案例背景和谈前准备">
+          <section class="detail-section">
+            <h2><span data-icon="file"></span>你目前知道的情况</h2>
+            <p>
+              近期多次缺课，课堂参与减少。面对老师的询问，小陈说最近不太想去上课，希望先了解他的近况。
+            </p>
+            <p class="muted">这些是已知线索。先听他自己的描述，不预设原因。</p>
+          </section>
+          <section class="detail-section">
+            <h2><span data-icon="target"></span>这次重点练什么</h2>
+            <ol class="goal-list">
+              <li><span class="goal-number">1</span>了解具体的学习困难</li>
+              <li><span class="goal-number">2</span>回应学生的挫败感</li>
+              <li><span class="goal-number">3</span>一起商量一个可行的小步骤</li>
+            </ol>
+          </section>
+          <section class="detail-section">
+            <h2><span data-icon="pen"></span>谈前准备<span class="section-optional">可选</span></h2>
+            <label class="note-label" for="preparation">你想先了解什么，或提醒自己注意什么？</label
+            ><textarea
+              id="preparation"
+              rows="3"
+              maxlength="2000"
+              placeholder="例如：先听近况，不急着提建议；问问他希望得到什么帮助。"
+            ></textarea>
+          </section>
+          <div class="detail-actions">
+            <small>准备好后，开始这次谈话。</small
+            ><a class="button" href="conversation.html"
+              ><span data-icon="mic"></span>进入谈话窗口<span data-icon="arrow"></span
+            ></a>
+          </div>
+        </section>
+      </div>
+    </main>
+    <footer class="site-footer" data-footer></footer>
+  </body>
+</html>
