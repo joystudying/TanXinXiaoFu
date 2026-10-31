@@ -56,6 +56,18 @@ for p in ROOT.rglob("*"):
         failures.append(f"[hardcoded key] {p.relative_to(ROOT)} → {m.group(0)[:6]}…")
         break
 
+# 5) providers/ 不许 import db（厂商层只做外部调用，不碰数据库）
+for p in py_files(APP / "providers"):
+    if DB_TO_SERVICE.search(p.read_text(encoding="utf-8")) or re.search(
+        r"from\s+\.\.db|import\s+\.\.db", p.read_text(encoding="utf-8")
+    ):
+        failures.append(f"[db import in providers] {p.relative_to(ROOT)}")
+
+# 6) services/ 不许直接 import httpx（HTTP 只允许在 providers/）
+for p in py_files(APP / "services"):
+    if HTTP_IMPORT.search(p.read_text(encoding="utf-8")):
+        failures.append(f"[httpx in services] {p.relative_to(ROOT)}")
+
 print("边界检查：")
 if failures:
     for f in failures:
@@ -67,4 +79,6 @@ print("  [OK] services 无 SQL")
 print("  [OK] api 无 httpx")
 print("  [OK] db 无 services 依赖")
 print("  [OK] 无硬编码密钥")
+print("  [OK] providers 不碰数据库")
+print("  [OK] services 无 httpx（HTTP 只在 providers）")
 print("\n全部通过")

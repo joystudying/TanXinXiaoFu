@@ -8,7 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from . import errors
-from .api import chat, health, sessions, tts
+from .api import chat, health, sessions, tts, ws_chat
 from .config import settings
 from .db import repo
 
@@ -82,6 +82,7 @@ app.include_router(health.router)
 app.include_router(sessions.router)
 app.include_router(chat.router)
 app.include_router(tts.router)
+app.include_router(ws_chat.router)  # 长连接语音通道，复用同一套 turn_engine
 
 # 静态页挂根路径；html=True 会让 "/" 指向 frontend/index.html
 app.mount("/", StaticFiles(directory=str(settings.frontend_dir), html=True), name="static")

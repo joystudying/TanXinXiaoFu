@@ -1,0 +1,28 @@
+# 谈心小辅 —— Caddy 反向代理（纯 HTTP）
+# HTTPS 由 Cloudflare Tunnel 在更外层提供；本文件只做两件事：
+#   1) 静态页面；2) /ws/chat 转发到未改动的 FastAPI（127.0.0.1:8000）。
+#
+# 用法（在 D:\tanxin 下）：
+#   caddy run --config tools/caddy/Caddyfile
+#   打开 http://localhost:5180/
+#
+# 为什么需要它：手机/局域网设备用麦克风要求 HTTPS，
+# 而 Cloudflare 隧道指向的是一个普通 HTTP 端口，所以先用 Caddy 把静态页和 WS 收在一起。
+{
+	admin off
+}
+
+:5180 {
+	handle /ws/* {
+		reverse_proxy 127.0.0.1:8000
+	}
+
+	handle /api/* {
+		reverse_proxy 127.0.0.1:8000
+	}
+
+	handle {
+		root * D:/tanxin/frontend
+		file_server
+	}
+}

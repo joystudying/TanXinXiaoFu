@@ -1,5 +1,59 @@
 # CHANGELOG
 
+## M4 · 2026-10-31 · 合并合作仓库（joystudying/TanXinXiaoFu）
+
+合并在 `integrate` 分支进行，两边提交历史都保留（`origin` = 我们的，`collab` = 合作方）。
+
+**吸收自合作仓库**
+- `backend/app/providers/`：ASR / LLM / TTS 三个接口 + 工厂。换厂商只改 `.env`：
+  `LLM_PROVIDER` / `ASR_PROVIDER`（stub|funasr）/ `TTS_PROVIDER`（edge|stub）
+- `providers/asr_funasr.py` + `backend/services/funasr_server.py`：**本地 FunASR 离线识别**
+  （独立进程端口 8001，需 Python 3.10/3.11，首次自动下约 1GB 模型）
+- `providers/tts_edge.py`：edge-tts 作为正式 TTS 实现
+- `api/ws_chat.py`：WebSocket `/ws/chat` 长连接语音通道
+- `tools/caddy/Caddyfile`：静态页 + `/ws` 与 `/api` 反代（路径改成本项目的 `D:/tanxin/frontend`）
+- `.env.example`：全部配置项带注释
+
+**保留我们的**
+- 数据库四表（cases/sessions/turns/request_log）、幂等、事务与失败回滚
+- 私设注入 + 输出泄漏检查 + 20 条套话用例
+- 42 条 pytest、分层边界检查、文档体系
+
+**关键设计决定：两个端点共用一套业务逻辑**
+原本 `/api/chat` 里写了 120 行编排，WS 要复刻必然分叉。
+抽出 `services/turn_engine.py::run_turn()`，REST 与 WS 都调用它——
+所以在 WS 上幂等、失败回滚、泄漏检查、落库行为与 REST **完全一致**（有测试验证）。
+
+**没有照搬的两处**
+1. 合作方的 `llm_deepseek.py` 用 `openai` SDK，我们改成 httpx 直连。
+   理由：项目规定只有一处 HTTP 出口，引入 SDK 会让分层边界失效，还多一个依赖。
+2. 合作方的数据库是单表 `turns` + SQLAlchemy。我们没有替换——
+   换成它要丢掉会话状态机、幂等、四表关系和 42 条测试，收益不抵风险。
+   这条留给后续单独评估。
+
+**边界检查新增两条**
+- `providers/` 不许 import db（厂商层只做外部调用）
+- `services/` 不许 import httpx（HTTP 只在 providers）
+
+**实测**
+```
+WebSocket ws://127.0.0.1:8000/ws/chat
+  → {"type":"ready", session_id, student_name:"小陈", asr:"stub", tts:"edge"}
+  → 发 {"type":"text","text":"你好"}
+  → {"type":"reply","turn_no":2,"text":"老师好。","audio_b64":"…","audio_format":"mp3"}
+```
+真实 DeepSeek + 真实 edge-tts，音频字段有内容。
+
+**测试**：42 条全绿（新增 7 条 WS：握手、文字往返、落库、空音频、
+未知类型、reset 换会话、WS 上同样拦私设泄漏）。
+
+**未做**
+- 前端还是走 REST，没切到 WS（下一轮再切，避免同时改前后端）
+- FunASR 尚未安装验证（要 Python 3.10/3.11 独立环境）
+- 合作方更新的 UI 版本（styles.css 63.6KB）尚未同步
+
+---
+
 ## M3.3（进行中）· 真双工准备
 
 **结论**：现在"识别→模型→朗读"三段拼接做不到真双工，换音色没用。

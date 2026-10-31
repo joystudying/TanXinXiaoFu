@@ -24,6 +24,14 @@ class Settings(BaseSettings):
     model_max_tokens: int = 200
     temperature: float = 0.8
     ctx_max_turns: int = 8
+    # 可插拔 Provider（合并自合作仓库）：换厂商只改这里
+    llm_provider: str = "deepseek"
+    asr_provider: str = "stub"          # stub | funasr
+    funasr_service_url: str = "http://127.0.0.1:8001/transcribe"
+    tts_provider: str = "edge"          # edge | stub
+    tts_voice: str = "zh-CN-YunxiNeural"  # 云希：年轻男声，贴合大学生角色
+    tts_rate: str = "+4%"
+
     db_path: str = "data/tanxin.db"
     allow_origins: str = "http://127.0.0.1:8000"
 

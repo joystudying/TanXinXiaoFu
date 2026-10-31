@@ -10,6 +10,9 @@ _BACKEND = pathlib.Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(_BACKEND))
 _TMPDIR = pathlib.Path(tempfile.mkdtemp(prefix="tanxin-test-"))
 os.environ["DB_PATH"] = str(_TMPDIR / "test.db")
+# 单测不碰外部服务：识别与合成都用桩实现
+os.environ["ASR_PROVIDER"] = "stub"
+os.environ["TTS_PROVIDER"] = "stub"
 
 import pytest  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
