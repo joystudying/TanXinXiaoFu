@@ -1,4 +1,6 @@
 """统一错误响应格式：{"error": {"code","message","retryable"}}（设计文档 6 节通用约定）。"""
+import sys
+
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
@@ -53,7 +55,11 @@ def install(app: FastAPI) -> None:
 
     @app.exception_handler(Exception)
     async def _unhandled(request: Request, exc: Exception):
-        # 不把堆栈给用户（设计文档 12 节兜底原则）
+        # 不把堆栈给用户（设计文档 12 节兜底原则），但要记到服务端日志
+        import traceback
+
+        print(f"[500] {request.method} {request.url.path}", file=sys.stderr)
+        traceback.print_exception(type(exc), exc, exc.__traceback__, file=sys.stderr)
         return JSONResponse(
             status_code=500,
             content={"error": {"code": "internal_error", "message": "服务内部错误", "retryable": True}},

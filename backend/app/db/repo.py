@@ -18,7 +18,11 @@ def now_iso() -> str:
 def connect() -> sqlite3.Connection:
     db = settings.db_file
     db.parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(db)
+    conn = sqlite3.connect(
+        db,
+        isolation_level=None,   # 自动提交，事务在需要处显式 BEGIN IMMEDIATE
+        check_same_thread=False,  # 连接的创建（线程池里的依赖注入）和 async 处理函数不是同一线程
+    )
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
     conn.execute("PRAGMA journal_mode = WAL")
@@ -130,3 +134,154 @@ def count_turns(conn: sqlite3.Connection, session_id: str) -> int:
     return conn.execute(
         "SELECT COUNT(*) AS n FROM turns WHERE session_id=?", (session_id,)
     ).fetchone()["n"]
+
+
+# ---------- 幂等与一轮对话（设计文档 7.3 / 9.4 / 11.2） ----------
+
+RATE_LIMIT_PER_MINUTE = 10
+
+
+def count_recent_requests(conn: sqlite3.Connection, session_id: str, seconds: int = 60) -> int:
+    """近 N 秒内该会话发起的请求数，用于限流（6.4）。
+
+    注意：created_at 存的是带 +08:00 的本地时间，不能用 SQL 的 datetime('now')（那是 UTC）
+    直接比字符串，否则永远为真。这里统一截到秒再按本地时间比较。
+    """
+    cutoff = (datetime.now(TZ) - timedelta(seconds=seconds)).strftime("%Y-%m-%dT%H:%M:%S")
+    return conn.execute(
+        "SELECT COUNT(*) AS n FROM request_log "
+        "WHERE session_id=? AND substr(created_at, 1, 19) >= ?",
+        (session_id, cutoff),
+    ).fetchone()["n"]
+
+
+def _next_turn_no(conn: sqlite3.Connection, session_id: str) -> int:
+    return conn.execute(
+        "SELECT COALESCE(MAX(turn_no), 0) + 1 AS n FROM turns WHERE session_id=?", (session_id,)
+    ).fetchone()["n"]
+
+
+def begin_turn(conn: sqlite3.Connection, *, session_id: str, text: str,
+               key: str, req_hash: str, source: str = "text") -> dict:
+    """占幂等键 + 分配 turn_no + 写老师那句。整个过程在一个写事务里。
+
+    返回：
+      {"status":"new",       "turn_no": N}
+      {"status":"duplicate", "response": {...}}   # 同 key 已完成
+      {"status":"in_flight"}                       # 同 key 或同会话还有请求在跑
+      {"status":"mismatch"}                        # 同 key 不同内容
+    """
+    conn.execute("BEGIN IMMEDIATE")
+    try:
+        # 1) 会话级串行：本会话只要还有 pending，就拒绝新请求（技术路径文档 D-3）
+        pending = conn.execute(
+            "SELECT idempotency_key FROM request_log WHERE session_id=? AND status='pending' LIMIT 1",
+            (session_id,),
+        ).fetchone()
+        if pending is not None:
+            conn.execute("ROLLBACK")
+            return {"status": "in_flight"}
+
+        # 2) 占键
+        ts = now_iso()
+        cur = conn.execute(
+            "INSERT INTO request_log(idempotency_key, session_id, request_hash, status, created_at, updated_at) "
+            "VALUES(?,?,?, 'pending', ?, ?) ON CONFLICT(idempotency_key) DO NOTHING",
+            (key, session_id, req_hash, ts, ts),
+        )
+
+        if cur.rowcount == 0:  # 键已存在
+            row = conn.execute(
+                "SELECT * FROM request_log WHERE idempotency_key=?", (key,)
+            ).fetchone()
+            if row["request_hash"] != req_hash:
+                conn.execute("ROLLBACK")
+                return {"status": "mismatch"}
+            if row["status"] == "done":
+                conn.execute("ROLLBACK")
+                return {"status": "duplicate", "response": json.loads(row["response_json"])}
+            if row["status"] == "failed":
+                # 技术路径文档 D-1：失败后允许同 key 重试，重置为 pending 继续
+                conn.execute(
+                    "UPDATE request_log SET status='pending', updated_at=? WHERE idempotency_key=?",
+                    (ts, key),
+                )
+            else:
+                conn.execute("ROLLBACK")
+                return {"status": "in_flight"}
+
+        # 3) 分配轮次 + 写老师那句
+        turn_no = _next_turn_no(conn, session_id)
+        conn.execute(
+            "INSERT INTO turns(session_id, turn_no, role, text, source, created_at) "
+            "VALUES(?,?, 'teacher', ?,?,?)",
+            (session_id, turn_no, text, source, now_iso()),
+        )
+        conn.execute(
+            "UPDATE sessions SET status='active' WHERE id=? AND status='created'", (session_id,)
+        )
+        conn.execute("COMMIT")
+        return {"status": "new", "turn_no": turn_no}
+    except Exception:
+        conn.execute("ROLLBACK")
+        raise
+
+
+def finish_turn(conn: sqlite3.Connection, *, key: str, session_id: str, turn_no: int,
+                reply: str, usage: dict, latency_ms: int) -> dict:
+    """写学生那句 + 缓存响应。返回给前端的响应体。"""
+    student_no = turn_no + 1
+    response = {"turn_no": student_no, "reply_text": reply}
+
+    conn.execute("BEGIN IMMEDIATE")
+    try:
+        conn.execute(
+            "INSERT INTO turns(session_id, turn_no, role, text, source, created_at) "
+            "VALUES(?,?, 'student', ?, 'text', ?)",
+            (session_id, student_no, reply, now_iso()),
+        )
+        conn.execute(
+            "UPDATE request_log SET status='done', turn_no=?, response_json=?, tokens_in=?, "
+            "tokens_out=?, latency_ms=?, updated_at=? WHERE idempotency_key=?",
+            (
+                turn_no,
+                json.dumps(response, ensure_ascii=False),
+                (usage or {}).get("prompt_tokens", 0),
+                (usage or {}).get("completion_tokens", 0),
+                latency_ms,
+                now_iso(),
+                key,
+            ),
+        )
+        conn.execute("COMMIT")
+    except Exception:
+        conn.execute("ROLLBACK")
+        raise
+    return response
+
+
+def fail_turn(conn: sqlite3.Connection, *, key: str, session_id: str,
+              turn_no: int, latency_ms: int = 0) -> None:
+    """失败回滚：删掉老师那句，request_log 置 failed（技术路径文档 D-2）。"""
+    conn.execute("BEGIN IMMEDIATE")
+    try:
+        conn.execute(
+            "DELETE FROM turns WHERE session_id=? AND turn_no=?", (session_id, turn_no)
+        )
+        conn.execute(
+            "UPDATE request_log SET status='failed', latency_ms=?, updated_at=? "
+            "WHERE idempotency_key=?",
+            (latency_ms, now_iso(), key),
+        )
+        # 若本次是会话的第一句，把状态退回 created，保持状态机干净
+        left = conn.execute(
+            "SELECT COUNT(*) AS n FROM turns WHERE session_id=?", (session_id,)
+        ).fetchone()["n"]
+        if left == 0:
+            conn.execute(
+                "UPDATE sessions SET status='created' WHERE id=? AND status='active'", (session_id,)
+            )
+        conn.execute("COMMIT")
+    except Exception:
+        conn.execute("ROLLBACK")
+        raise

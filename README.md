@@ -17,7 +17,7 @@
 |---|---|
 | M0 骨架（health / 静态页 / 缺 key 退出） | ✅ |
 | M1 存储与案例（建表 / 案例 / 会话接口） | ✅ |
-| M2 模型与单轮（`/api/chat` + 幂等） | ⬜ 下一步 |
+| M2 模型与单轮（`/api/chat` + 幂等） | ✅ |
 | M3–M6 | ⬜ |
 
 ## 怎么跑
@@ -34,7 +34,7 @@ cd D:\tanxin
 ## 日常操作
 
 ```powershell
-# 分层边界检查（改完代码就跑）
+# 演示前自检（真实模型跑 3 轮）`npython scripts\e2e_check.py`n`n# 分层边界检查（改完代码就跑）
 python scripts\check_boundaries.py
 
 # 数据库备份（改 schema 之前必须做）
