@@ -3449,3 +3449,33 @@ h2 {
   border-color: var(--amber);
   color: #fff;
 }
+
+/* ---------- M3.2 间距修正 ----------
+   原因：.conversation-grid 原本固定 740px 高，加进手输行后左栏内容超出面板，
+   底部链接被挤出面板、几乎贴住页脚，看起来上下间距过小。
+   处理：
+     1) 矮屏下不再固定高度，让页面自然滚动，内容永远不被裁切；
+     2) 补底部衬距，链接不再贴边；
+     3) 高屏仍保留一屏布局。 */
+.presence { overflow-y: auto; }
+.microphone-area { padding-bottom: 8px; }
+.manual-row { margin: 14px 0 0; }
+.presence-bottom { margin-top: 22px; padding-top: 16px; row-gap: 10px; flex-wrap: wrap; }
+
+@media (max-height: 980px) {
+  .conversation-grid { height: auto; min-height: 0; align-items: stretch; }
+  .transcript { max-height: 780px; }
+}
+
+@media (max-height: 820px) {
+  .conversation-grid { gap: 18px; }
+  .presence { padding: 20px 26px 22px; }
+  .presence-photo { width: 150px; height: 150px; }
+  .current-response { padding: 16px 20px; }
+  .transcript { padding: 22px 24px 18px; max-height: 720px; }
+}
+
+@media (max-height: 680px) {
+  .presence-photo { width: 112px; height: 112px; }
+  .wave-row { display: none; }
+}

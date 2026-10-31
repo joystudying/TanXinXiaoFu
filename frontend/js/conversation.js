@@ -5,7 +5,7 @@
  * 只把数据源换成 /api/sessions 与 /api/chat。
  */
 import { createRecognizer } from './speech.js';
-import { speak, stopSpeaking } from './speak.js';
+import { speak, stopSpeaking, describeVoice } from './speak.js';
 import { createBargeInWatcher, canWatchBargeIn } from './vad.js';
 
 const CASE_ID = 'c_academic_01';
@@ -57,6 +57,7 @@ let pendingText = '';
 let recognizer = null;
 let watcher = null;
 let watcherReady = false;
+let voiceHinted = false;
 
 // ---------------- 渲染 ----------------
 
@@ -64,7 +65,7 @@ function setState(next, message = '') {
   state = next;
   const labels = {
     [State.IDLE]: { status: '等待你的回应', mic: '点击开始说话', hint: '点击开始' },
-    [State.LISTENING]: { status: '正在听你说…', mic: '点击结束说话', hint: '正在录音' },
+    [State.LISTENING]: { status: '正在听你说…（停顿 1.2 秒会自动结束）', mic: '说完了', hint: '正在录音' },
     [State.PROCESSING]: { status: '小辅在回应…', mic: '小辅在回应…', hint: '请稍等' },
     [State.SPEAKING]: { status: '小辅正在说（开口可打断）', mic: '正在朗读…', hint: '可打断' },
     [State.ERROR]: { status: '出了点问题', mic: '点击重试说话', hint: '看下面的提示' },
@@ -249,11 +250,21 @@ async function speakReply(text) {
 
   const estimate = Math.max(6000, Math.round(text.length * 320) + 4000);
   const result = await Promise.race([
-    speak(text, { onError: (code) => notice(ERROR_TEXT[code] || '朗读失败') }),
+    speak(text, { voicePrefer: 'male', onError: (code) => notice(ERROR_TEXT[code] || '朗读失败') }),
     timeoutAfter(estimate, '__timeout__'),
   ]);
 
   if (watcher) watcher.disarm();
+
+  // 第一次朗读后检查音色：不是神经网络音色的话，说明声音会偏机械，给个可操作建议
+  if (!voiceHinted) {
+    voiceHinted = true;
+    const v = describeVoice();
+    if (v.name && !v.neural) {
+      notice(`当前音色是「${v.name}」（传统合成音）。换成 Microsoft Edge 打开本站可以自动用上神经网络音色，听起来自然很多。`);
+    }
+  }
+
   if (result === '__timeout__') {
     stopSpeaking();
     setState(State.IDLE, '文字已经显示；朗读没有出声，可以继续下一句');
@@ -315,7 +326,7 @@ async function endSession() {
 function bind() {
   ui.mic?.addEventListener('click', () => {
     if (state === State.LISTENING) {
-      recognizer?.stop();
+      recognizer?.flush();
       return;
     }
     beginTalk();

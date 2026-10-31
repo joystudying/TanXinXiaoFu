@@ -1,10 +1,10 @@
 /**
  * 语音识别封装（设计文档 8.1）
  *
- * 三条必须遵守（来自规范与本机实测）：
- *  1. 重复 start() 抛 InvalidStateError → 状态不是 idle 就不许 start
- *  2. 识别走在线服务 → network / service-not-allowed 必然出现，必须有手输兜底
- *  3. stop() 后不保证立刻 onend → UI 一律以事件为准，不用定时器猜
+ * 关键改进（M3.2）：**自己判断"说完了"**。
+ * 浏览器在 continuous=false 时，说话中间一停顿就会把这一句判成结束；
+ * 改成 continuous=true + 静音计时器：每收到识别结果就把计时器重置，
+ * 连续 1.2 秒没有任何新结果才认为这一轮说完了。
  */
 
 export function mapAsrError(code) {
@@ -23,51 +23,117 @@ export function mapAsrError(code) {
   }
 }
 
-export function createRecognizer({ lang = 'zh-CN', onInterim, onFinal, onError, onEnd } = {}) {
+export function createRecognizer({
+  lang = 'zh-CN',
+  silenceMs = 1200,      // 停顿多久算说完
+  maxUtteranceMs = 60000, // 兜底：一次最多说这么久
+  onInterim,
+  onFinal,
+  onError,
+  onEnd,
+} = {}) {
   const Ctor = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!Ctor) {
-    return { supported: false, start() {}, stop() {}, abort() {}, get state() { return 'idle'; } };
+    return { supported: false, start() {}, stop() {}, abort() {}, flush() {}, get state() { return 'idle'; } };
   }
 
   let state = 'idle';
+  let finalText = '';
+  let interimText = '';
+  let silenceTimer = null;
+  let hardTimer = null;
+  let finishing = false;
+
   const r = new Ctor();
   r.lang = lang;
-  r.continuous = false;      // 一轮一句
-  r.interimResults = true;   // 临时结果：显示"正在听"，也用于判断是否已经开口
+  r.continuous = true;        // 不在停顿处自动断开
+  r.interimResults = true;
   r.maxAlternatives = 1;
 
-  r.onstart = () => { state = 'listening'; };
+  function clearTimers() {
+    if (silenceTimer) { clearTimeout(silenceTimer); silenceTimer = null; }
+    if (hardTimer) { clearTimeout(hardTimer); hardTimer = null; }
+  }
+
+  function resetSilenceTimer() {
+    if (silenceTimer) clearTimeout(silenceTimer);
+    silenceTimer = setTimeout(() => finish('silence'), silenceMs);
+  }
+
+  function collected() {
+    return (finalText + interimText).trim();
+  }
+
+  function finish(reason) {
+    if (finishing) return;
+    const text = collected();
+    finishing = true;
+    clearTimers();
+    try { r.stop(); } catch (e) { /* 忽略 */ }
+    if (reason === 'manual' || reason === 'silence') {
+      if (text) {
+        state = 'processing';
+        finalText = '';
+        interimText = '';
+        onFinal?.(text);
+      }
+    }
+  }
+
+  r.onstart = () => {
+    state = 'listening';
+    finishing = false;
+    finalText = '';
+    interimText = '';
+    resetSilenceTimer();
+    hardTimer = setTimeout(() => finish('timeout'), maxUtteranceMs);
+  };
 
   r.onresult = (e) => {
-    let interim = '';
-    let final = '';
-    for (const res of e.results) {
+    let finals = '';
+    let interims = '';
+    for (let i = 0; i < e.results.length; i += 1) {
+      const res = e.results[i];
       const text = res[0]?.transcript ?? '';
-      if (res.isFinal) final += text;
-      else interim += text;
+      if (res.isFinal) finals += text;
+      else interims += text;
     }
-    if (interim.trim()) onInterim?.(interim.trim());
-    if (final.trim()) {
-      state = 'processing';
-      onFinal?.(final.trim());
+    finalText = finals;
+    interimText = interims;
+
+    const shown = collected();
+    if (shown) {
+      onInterim?.(shown);
+      resetSilenceTimer();          // 只要还在出字，就认为人还在说
     }
   };
 
   r.onerror = (e) => {
     state = 'error';
+    clearTimers();
     onError?.(mapAsrError(e.error));
   };
 
   r.onend = () => {
+    clearTimers();
+    const rest = collected();
+    if (rest && !finishing) {       // 浏览器自己断开了，把已收到的交出去
+      finalText = '';
+      interimText = '';
+      onFinal?.(rest);
+    }
     if (state !== 'error') state = 'idle';
+    finishing = false;
     onEnd?.();
   };
 
   return {
     supported: true,
     get state() { return state; },
+    get pendingText() { return collected(); },
     start() {
-      if (state === 'listening' || state === 'processing') return;  // 防重复
+      if (state === 'listening' || state === 'processing') return;
+      finishing = false;
       try {
         r.start();
       } catch (err) {
@@ -75,7 +141,14 @@ export function createRecognizer({ lang = 'zh-CN', onInterim, onFinal, onError, 
         onError?.('asr_start_failed');
       }
     },
-    stop() { try { r.stop(); } catch (e) { /* 忽略 */ } },
-    abort() { try { r.abort(); } catch (e) { /* 忽略 */ } },
+    /** 用户主动点「说完了」：立刻收尾 */
+    flush() { finish('manual'); },
+    stop() { finish('manual'); },
+    abort() {
+      clearTimers();
+      finalText = '';
+      interimText = '';
+      try { r.abort(); } catch (e) { /* 忽略 */ }
+    },
   };
 }
