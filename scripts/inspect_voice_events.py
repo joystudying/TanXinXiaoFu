@@ -5,14 +5,29 @@
   - 老师那句话被识别成了什么
   - 学生回复的文本
   - 学生音频的能量（判断是真人语音还是静音）
+
+注意：火山实时语音的**下行音频是 32 位浮点 PCM（float32，24kHz，单声道）**，
+上行才是 16 位整数。按 int16 解读会变成噪音——这个坑踩过一次。
 """
 import json
+import math
 import struct
 import wave
 from collections import Counter
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1] / "data"
+
+
+def float32_to_int16(pcm: bytes) -> bytes:
+    """float32 PCM → int16 PCM，供 WAV 播放。"""
+    n = len(pcm) // 4
+    vals = struct.unpack("<%df" % n, pcm[: n * 4])
+    out = bytearray()
+    for v in vals:
+        s = int(max(-1.0, min(1.0, v)) * 32767)
+        out.extend(struct.pack("<h", s))
+    return bytes(out)
 
 
 def main() -> None:
@@ -35,7 +50,6 @@ def main() -> None:
 
     print("=== 老师这句话被识别成 ===")
     if asr:
-        # 逐帧结果会重复，去重保序后拼起来
         uniq = []
         for t in asr:
             if not uniq or uniq[-1] != t:
@@ -52,26 +66,28 @@ def main() -> None:
     for r in seen[:5]:
         print("  " + r[:200])
     if not seen:
-        print("  (事件里没有单独的文字字段，回复已直接在音频里)")
+        print("  (文字直接在音频里)")
 
-    pcm_path = ROOT / "_student_reply.pcm"
-    pcm = pcm_path.read_bytes()
-    n = len(pcm) // 2
-    vals = struct.unpack("<%dh" % n, pcm[: n * 2])
-    rms = (sum(v * v for v in vals) / n) ** 0.5
+    raw = (ROOT / "_student_reply.pcm").read_bytes()
+    n = len(raw) // 4
+    vals = struct.unpack("<%df" % n, raw[: n * 4])
+    rms = math.sqrt(sum(v * v for v in vals) / n)
     peak = max(abs(v) for v in vals)
 
-    print("\n=== 学生音频检查 ===")
+    print("\n=== 学生音频检查（按 float32 解读）===")
     print(f"  样本 {n} 个 ≈ {n / 24000:.1f} 秒 @24kHz")
-    print(f"  RMS={rms:.0f}  峰值={peak}   （静音≈0；真人语音常见 RMS 1000~6000）")
+    print(f"  峰值={peak:.4f}  RMS={rms:.4f}")
+    print(f"  折算 dBFS：峰值 {20 * math.log10(peak + 1e-9):.1f} dB，"
+          f"RMS {20 * math.log10(rms + 1e-9):.1f} dB")
+    print("  火山文档要求人声 RMS 约 −31.7 ~ −23.9 dBFS")
 
     wav = ROOT / "_student_reply.wav"
     with wave.open(str(wav), "wb") as w:
         w.setnchannels(1)
         w.setsampwidth(2)
         w.setframerate(24000)
-        w.writeframes(pcm)
-    print(f"  已转存 {wav.name}，可双击试听")
+        w.writeframes(float32_to_int16(raw))
+    print(f"\n  已转存 {wav.name}（float32→int16），可双击试听")
 
     print("\n=== 事件分布（前 8）===")
     c = Counter(e.get("event") for e in events if e.get("type") == "event")

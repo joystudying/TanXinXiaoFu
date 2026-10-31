@@ -13,7 +13,7 @@
     {"type":"ready","session_id":…,"dialog_id":…,"sample_rate":24000}
     {"type":"event","event":N,"payload":{…}}   识別/文本/状态等事件
     {"type":"error","code":…,"message":…}
-    二进制帧          学生语音 PCM16 / 24kHz
+    二进制帧          学生语音 float32 / 24kHz / 单声道（Web Audio 原生格式）
 """
 import asyncio
 import contextlib
@@ -88,6 +88,8 @@ async def ws_voice(ws: WebSocket) -> None:
             "session_id": info["session_id"],
             "dialog_id": info.get("dialog_id"),
             "sample_rate": 24000,
+            # 下行音频是 32 位浮点，浏览器可直接喂给 AudioBuffer，不要当 int16 读
+            "sample_format": "float32",
             "log_id": session.log_id,
         })
 

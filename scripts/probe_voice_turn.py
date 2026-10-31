@@ -92,7 +92,7 @@ async def main() -> int:
         except Exception:  # noqa: BLE001
             pass
 
-    print(f"\n收到音频：{len(audio)} 字节 ≈ {len(audio) / 48000:.1f} 秒（24k/16bit 单声道）")
+    print(f"\n收到音频：{len(audio)} 字节 ≈ {len(audio) / 4 / 24000:.1f} 秒（24k / float32 / 单声道）")
     if audio:
         OUT.write_bytes(bytes(audio))
         print(f"已保存：{OUT}")
