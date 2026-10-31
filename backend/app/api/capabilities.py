@@ -16,9 +16,16 @@ async def capabilities() -> dict:
     llm_ready = settings.model_configured
     asr_server = settings.asr_provider not in ("stub", "")
     tts_server = settings.tts_provider not in ("stub", "")
+    realtime = settings.realtime_configured
 
     # 档位从高到低，前端按顺序挑第一个可用的
     tiers = []
+    if realtime:
+        tiers.append({
+            "id": "realtime",
+            "label": "真双工实时语音",
+            "detail": "端到端语音模型，边说边听、可随时打断；音频只在服务端与云端之间流动",
+        })
     if llm_ready and asr_server and tts_server:
         tiers.append({
             "id": "full",
@@ -48,6 +55,7 @@ async def capabilities() -> dict:
         "llm": {"provider": settings.llm_provider, "ready": llm_ready},
         "asr": {"provider": settings.asr_provider, "server_side": asr_server},
         "tts": {"provider": settings.tts_provider, "server_side": tts_server},
-        "transport": {"ws": True, "rest": True},
+        "realtime": {"ready": realtime, "provider": "volcengine" if realtime else None},
+        "transport": {"ws": True, "rest": True, "voice_ws": realtime},
         "tiers": tiers,
     }

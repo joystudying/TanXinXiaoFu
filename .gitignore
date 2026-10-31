@@ -15,3 +15,7 @@ __pycache__/
 .vscode/
 .idea/
 data/frontend-backup-*/
+
+data/_*.pcm
+data/_*.wav
+data/_*.json

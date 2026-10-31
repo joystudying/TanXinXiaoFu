@@ -32,6 +32,13 @@ class Settings(BaseSettings):
     tts_voice: str = "zh-CN-YunxiNeural"  # 云希：年轻男声，贴合大学生角色
     tts_rate: str = "+4%"
 
+    # 火山引擎 豆包端到端实时语音（真双工）
+    volc_app_id: str = ""
+    volc_access_token: str = ""
+    volc_resource_id: str = "volc.speech.dialog"
+    volc_app_key: str = "PlgvMymc7f3tQnJ6"      # 官方固定常量，非密钥
+    volc_ws_url: str = "wss://openspeech.bytedance.com/api/v3/realtime/dialogue"
+
     db_path: str = "data/tanxin.db"
     allow_origins: str = "http://127.0.0.1:8000"
 
@@ -43,6 +50,11 @@ class Settings(BaseSettings):
     @property
     def frontend_dir(self) -> Path:
         return PROJECT_ROOT / "frontend"
+
+    @property
+    def realtime_configured(self) -> bool:
+        """真双工是否可用：App ID 与 Access Token 都填了才算。"""
+        return bool(self.volc_app_id.strip() and self.volc_access_token.strip())
 
     @property
     def model_configured(self) -> bool:

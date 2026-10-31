@@ -1,5 +1,56 @@
 # CHANGELOG
 
+## M5 · 2026-11-01 · 真双工实时语音接通
+
+**成果**：老师说话 → 火山端到端语音模型理解并回话 → 学生语音传回。全程实测通过。
+
+### 新增
+
+- `providers/realtime_volc.py`：火山实时语音协议实现
+  - 二进制帧组装/解析（头部 4 字节 + event + session_id + gzip payload）
+  - `RealtimeVolcSession`：连接、StartConnection、StartSession、发音频、收帧、优雅关闭
+- `api/ws_voice.py`：`/ws/voice` 代理
+  - 浏览器只收发音频，密钥留在服务端
+  - 三条并发任务：上行推流 / 下行收帧 / 20ms 静音保活
+  - 支持 `mute` / `unmute` / `finish` 控制消息
+- `scripts/probe_volc.py`：协议单测（连火山、建会话）
+- `scripts/probe_voice_ws.py`：代理冒烟测试
+- `scripts/probe_voice_turn.py`：端到端一轮（把 WAV 当老师说，收学生语音）
+- `scripts/inspect_voice_events.py`：把识别文本与音频能量摊开
+- 能力接口新增 `realtime` 档位（最高优先级）
+
+### 实测证据
+
+用系统语音合成生成 8.9 秒「老师」语音（"小陈，最近上课感觉怎么样？我看你这几次都没来…"），
+按 20ms 分片推给 `/ws/voice`：
+
+```
+ready            dialog=2b1e44d7…
+老师语音推送完毕，补 1.2 秒静音
+收到音频 804,044 字节 ≈ 16.8 秒   RMS=15813（真人语音量级，非静音）
+收到事件 131 条
+```
+
+| 验证项 | 结果 |
+|---|---|
+| 老师的语音被识别 | **「我看你这几次都没来是不是遇到什么事了」** |
+| 学生的回复文本 | **「就……还行吧。您是说哪…」**（与设置的人设一致：短句、犹豫、先否认） |
+| 学生音频 | 16.8 秒，RMS 15813，已转存 `data/_student_reply.wav` 可试听 |
+| 事件类型 | 450/451 识别、550 对话文本、350/351 合成开始结束、459 识别结束、559 对话结束 |
+
+### 踩坑记录（详见 docs/实时语音验证记录.md）
+
+1. 新版控制台把 Access Token 打码，无复制按钮 → 只能人工取
+2. 协议**不是** JSON 文本帧，发 JSON 会被回 `unsupported protocol version 7`
+3. 三个细节缺一不可：`X-Api-App-Key=PlgvMymc7f3tQnJ6`、flags 带事件位 `0b0100`、payload 必须 gzip
+
+### 未做
+
+- 前端还没接 `/ws/voice`（下一步：`js/realtime.js` + 播放队列 + 本地打断）
+- 实时通话的轮次还没落库（事件里的识别/回复文本需要写进 turns 表，供复盘用）
+
+---
+
 ## M4 · 2026-10-31 · 合并合作仓库（joystudying/TanXinXiaoFu）
 
 合并在 `integrate` 分支进行，两边提交历史都保留（`origin` = 我们的，`collab` = 合作方）。
