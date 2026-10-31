@@ -8,7 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from . import errors
-from .api import chat, health, sessions, tts, ws_chat
+from .api import capabilities, chat, health, sessions, tts, ws_chat
 from .config import settings
 from .db import repo
 
@@ -79,6 +79,7 @@ async def _request_id(request: Request, call_next):
 
 
 app.include_router(health.router)
+app.include_router(capabilities.router)
 app.include_router(sessions.router)
 app.include_router(chat.router)
 app.include_router(tts.router)

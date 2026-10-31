@@ -7,6 +7,7 @@
 import { createRecognizer } from './speech.js';
 import { speak, stopSpeaking, describeVoice } from './speak.js';
 import { createBargeInWatcher, canWatchBargeIn } from './vad.js';
+import { probeCapabilities, Tier, tierSummary } from './capabilities.js';
 
 const CASE_ID = 'c_academic_01';
 const LS_SESSION = 'tanxin.session_id';
@@ -58,6 +59,8 @@ let recognizer = null;
 let watcher = null;
 let watcherReady = false;
 let voiceHinted = false;
+let voiceDisabled = false;      // 档位判定为纯文字时，禁用语音入口
+let capabilityReport = null;
 
 // ---------------- 渲染 ----------------
 
@@ -77,7 +80,7 @@ function setState(next, message = '') {
 
   const busy = next === State.PROCESSING || next === State.SPEAKING;
   if (ui.mic) {
-    ui.mic.disabled = !sessionId || busy;
+    ui.mic.disabled = voiceDisabled || !sessionId || busy;
     ui.mic.setAttribute('aria-pressed', String(next === State.LISTENING));
   }
   if (ui.send) ui.send.disabled = !sessionId || busy;
@@ -298,6 +301,7 @@ function setupRecognizer() {
 }
 
 function beginTalk() {
+  if (voiceDisabled) { notice('当前环境已切到文字模式，请直接打字。'); ui.manual?.focus(); return; }
   if (!sessionId) return;
   if (state === State.LISTENING) return;
   if (!recognizer || !recognizer.supported) {
@@ -355,10 +359,27 @@ function bind() {
   });
 }
 
+async function applyCapabilities() {
+  capabilityReport = await probeCapabilities();
+  // 纯文字档：直接禁用麦克风，避免用户点了没反应
+  if (capabilityReport.tier === Tier.TEXT) {
+    voiceDisabled = true;
+    if (ui.mic) {
+      ui.mic.disabled = true;
+      ui.mic.title = '当前环境已切到文字模式';
+    }
+    notice(`${tierSummary(capabilityReport)}。可以直接在下面打字，功能一样完整。`);
+  } else if (capabilityReport.device.weak) {
+    notice(`检测到本机配置较低，已选用「${tierSummary(capabilityReport)}」，不会占用本地算力。`);
+  }
+  return capabilityReport;
+}
+
 async function main() {
   setupRecognizer();
   bind();
   setState(State.IDLE, '正在准备训练…');
+  await applyCapabilities();
   try {
     await ensureSession();
   } catch (e) {
