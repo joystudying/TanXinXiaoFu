@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>训练记录 · 谈心小辅</title>
+    <link rel="stylesheet" href="styles.css" />
+    <script src="shared.js" defer></script>
+  </head>
+  <body data-page="records">
+    <a class="skip" href="#main">跳到主要内容</a>
+    <header class="site-header" data-header></header>
+    <main id="main" class="main">
+      <div class="page-heading coach-page-heading">
+        <div>
+          <h1>训练记录与报告</h1>
+          <p>回到一次具体的谈话，看看值得保留和可以调整的地方。</p>
+        </div>
+        <div class="coach-welcome">
+          <p>回看一次练习，<br />找到下一步方向。</p>
+          <div class="coach-welcome-portrait" aria-hidden="true">
+            <img src="assets/xiaofu-counselor.png" alt="" width="164" height="188" />
+          </div>
+        </div>
+        <a class="button" href="index.html"><span data-icon="plus"></span>开始新练习</a>
+      </div>
+      <div class="record-tools">
+        <div class="record-tabs" aria-label="记录筛选">
+          <button data-filter="all" aria-pressed="true">全部记录</button
+          ><button data-filter="active" aria-pressed="false">进行中</button
+          ><button data-filter="finished" aria-pressed="false">已完成</button>
+        </div>
+      </div>
+      <section class="surface records-panel" aria-label="训练记录">
+        <div class="record-row record-table-head" aria-hidden="true">
+          <span>学生与场景</span><span>练习时间</span><span>状态</span
+          ><span style="text-align: right">操作</span>
+        </div>
+        <article class="record-row" data-record="finished">
+          <div class="record-person">
+            <img src="assets/xiaochen.png" alt="" />
+            <div>
+              <h2>小陈</h2>
+              <p>学业困难</p>
+            </div>
+          </div>
+          <div class="record-time">10月22日 14:30<small>3轮谈话</small></div>
+          <span class="status"><span class="dot"></span>已完成</span>
+          <div class="record-actions">
+            <a class="button secondary" href="review.html">查看复盘</a>
+            <details class="record-menu">
+              <summary class="icon-button" aria-label="小陈记录的更多操作">
+                <span data-icon="more"></span>
+              </summary>
+              <div class="record-menu-body">
+                <a href="conversation.html">再次练习</a
+                ><button data-preview-action="报告导出">导出报告</button
+                ><button data-preview-action="记录删除">删除记录</button>
+              </div>
+            </details>
+          </div>
+        </article>
+        <article class="record-row" data-record="active">
+          <div class="record-person">
+            <span class="record-initial">李</span>
+            <div>
+              <h2>小李</h2>
+              <p>人际关系</p>
+            </div>
+          </div>
+          <div class="record-time">10月21日 16:20<small>尚未结束</small></div>
+          <span class="status pending">进行中</span>
+          <div class="record-actions">
+            <button class="button" data-preview-action="其他训练记录">继续谈话</button>
+            <details class="record-menu">
+              <summary class="icon-button" aria-label="小李记录的更多操作">
+                <span data-icon="more"></span>
+              </summary>
+              <div class="record-menu-body">
+                <button data-preview-action="记录删除">删除记录</button>
+              </div>
+            </details>
+          </div>
+        </article>
+        <article class="record-row" data-record="finished">
+          <div class="record-person">
+            <span class="record-initial">张</span>
+            <div>
+              <h2>小张</h2>
+              <p>就业迷茫</p>
+            </div>
+          </div>
+          <div class="record-time">10月20日 10:05<small>5轮谈话</small></div>
+          <span class="status"><span class="dot"></span>已完成</span>
+          <div class="record-actions">
+            <button class="button secondary" data-preview-action="其他案例复盘">查看复盘</button>
+            <details class="record-menu">
+              <summary class="icon-button" aria-label="小张记录的更多操作">
+                <span data-icon="more"></span>
+              </summary>
+              <div class="record-menu-body">
+                <button data-preview-action="报告导出">导出报告</button
+                ><button data-preview-action="记录删除">删除记录</button>
+              </div>
+            </details>
+          </div>
+        </article>
+        <div class="record-footer">共3条记录</div>
+      </section>
+      <p class="preview-notice" data-preview-notice role="status" hidden></p>
+    </main>
+    <footer class="site-footer" data-footer></footer>
+  </body>
+</html>

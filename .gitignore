@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+backend/.env
+backend/data/
+.funasr-env/
+*.db
+
+# Node
+node_modules/
+frontend/dist/
+
+# 系统
+.DS_Store
+Thumbs.db
+.vscode/
+
+# 部署工具（二进制不进库）
+tools/cloudflared/

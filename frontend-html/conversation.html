@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>谈话训练 · 谈心小辅</title>
+    <link rel="stylesheet" href="styles.css" />
+    <style>
+      /* 语音对接新增：文字输入兜底（FunASR 在 CPU 上较慢，文字是稳定路径） */
+      .mic-controls {
+        flex-direction: column;
+        align-items: center;
+      }
+      .text-input-row {
+        display: flex;
+        gap: 8px;
+        width: min(360px, 100%);
+        margin-top: 10px;
+      }
+      .text-input-row input {
+        flex: 1;
+        min-width: 0;
+        padding: 12px 14px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        font-size: 15px;
+        color: var(--ink);
+        background: #fff;
+      }
+      .text-input-row input:focus {
+        outline: 2px solid var(--green);
+        outline-offset: -1px;
+      }
+      .text-input-row .button {
+        width: auto;
+        min-height: 44px;
+        font-size: 15px;
+        padding: 9px 16px;
+      }
+    </style>
+    <script src="shared.js" defer></script>
+    <script src="voice.js" defer></script>
+  </head>
+  <body data-page="conversation">
+    <a class="skip" href="#main">跳到主要内容</a>
+    <header class="site-header" data-header></header>
+    <main id="main" class="main">
+      <div class="page-heading conversation-heading coach-conversation-heading">
+        <div class="heading-inline">
+          <a class="back-link" href="details.html"><span data-icon="back"></span>案例详情</a>
+          <h1 data-voice-title>和小陈聊聊</h1>
+        </div>
+        <div class="coach-welcome">
+          <p>慢一点，<br />先听他把话说完。</p>
+          <div class="coach-welcome-portrait" aria-hidden="true">
+            <img src="assets/xiaofu-counselor.png" alt="" width="164" height="188" />
+          </div>
+        </div>
+        <div class="page-heading-tools">
+          <a class="button secondary" href="review.html"
+            >结束并查看复盘<span data-icon="arrow"></span
+          ></a>
+        </div>
+      </div>
+      <div class="conversation-grid">
+        <section class="surface presence" aria-label="学生与语音操作">
+          <div class="presence-top">
+            <span class="badge"><span class="dot"></span>小陈 · 大二 · 学业困难</span
+            ><button
+              class="text-button"
+              data-toggle-transcript
+              aria-expanded="true"
+              aria-controls="transcript"
+            >
+              <span data-icon="file"></span><span>收起记录</span>
+            </button>
+          </div>
+          <img class="presence-photo" src="assets/xiaochen.png" alt="小陈" />
+          <p class="presence-status"><span class="dot"></span>等待你的回应</p>
+          <div class="current-response">
+            <blockquote>“其实我不是不想学，就是越落下越多，后来连从哪里补都不知道了。”</blockquote>
+            <div class="response-footer">
+              <button class="text-button" data-voice-replay-student>
+                <span data-icon="volume"></span>回听这句</button
+              ><small>小陈的回应</small>
+            </div>
+          </div>
+          <div class="microphone-area">
+            <div class="wave-row">
+              <span>语音回应</span>
+              <div class="wave" aria-hidden="true">
+                <i style="height: 12px"></i><i style="height: 24px"></i><i style="height: 16px"></i
+                ><i style="height: 32px"></i><i style="height: 20px"></i><i style="height: 28px"></i
+                ><i style="height: 14px"></i><i style="height: 36px"></i><i style="height: 22px"></i
+                ><i style="height: 16px"></i><i style="height: 28px"></i><i style="height: 20px"></i
+                ><i style="height: 32px"></i><i style="height: 14px"></i><i style="height: 24px"></i
+                ><i style="height: 12px"></i>
+              </div>
+              <span>00:00 / 01:00</span>
+            </div>
+            <div class="mic-controls">
+              <button class="button" data-voice-mic>
+                <span data-icon="mic"></span><span data-voice-mic-label>点击开始说话</span>
+              </button>
+              <div class="text-input-row">
+                <input
+                  type="text"
+                  data-voice-text
+                  placeholder="或直接输入文字…"
+                  autocomplete="off"
+                />
+                <button class="button secondary" data-voice-send>发送</button>
+              </div>
+            </div>
+            <div class="presence-bottom">
+              <button class="text-button" data-voice-replay-teacher>
+                <span data-icon="headphones"></span>回听上一段录音</button
+              ><a class="text-button" href="details.html"><span data-icon="pen"></span>谈前笔记</a>
+            </div>
+          </div>
+        </section>
+        <aside class="surface transcript" id="transcript" data-transcript aria-label="对话记录">
+          <div class="transcript-heading">
+            <h2>对话记录</h2>
+            <small data-transcript-round>第0轮</small>
+          </div>
+          <div class="transcript-messages" tabindex="0" aria-label="可滚动的对话内容">
+            <article class="message teacher">
+              <span class="speaker">辅导员 · 第1轮</span>
+              <p>小陈，最近上课感觉怎么样？看到你这几次没到课，想了解一下情况。</p>
+            </article>
+            <article class="message student">
+              <span class="speaker">小陈</span>
+              <p>反正去了也听不懂，坐教室里也是浪费时间。</p>
+            </article>
+            <article class="message teacher">
+              <span class="speaker">辅导员 · 第2轮</span>
+              <p>你别想那么多，调整一下心态就好了。</p>
+            </article>
+            <article class="message student">
+              <span class="speaker">小陈</span>
+              <p>有些内容跟不上，我一进教室就觉得自己不行。</p>
+            </article>
+            <article class="message teacher">
+              <span class="speaker">辅导员 · 第3轮</span>
+              <p>听起来，跟不上课程让你挺受挫的。你愿意说说，最先从哪部分开始觉得吃力吗？</p>
+            </article>
+            <article class="message student">
+              <span class="speaker">小陈</span>
+              <p>其实我不是不想学，就是越落下越多，后来连从哪里补都不知道了。</p>
+            </article>
+          </div>
+          <p class="transcript-caption">回看对话，或继续你的回应。</p>
+        </aside>
+      </div>
+      <p class="preview-notice" data-preview-notice role="status" hidden></p>
+    </main>
+    <footer class="site-footer" data-footer></footer>
+  </body>
+</html>

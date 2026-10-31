@@ -1,0 +1,38 @@
+"""私有角色设定 + 服务端注入。
+
+「隐藏背景、表达特点、可控分支」全部在这里组装成 system prompt，
+只在服务端拼好喂给 LLM，浏览器永远拿不到这些隐藏事实。
+"""
+from pydantic import BaseModel, Field
+
+
+class RoleConfig(BaseModel):
+    name: str = "小悦"
+    age: int = 16
+    scenario: str = "情绪困扰"
+    # 隐藏背景：学生不主动说、但影响回答的事实（仅服务端）
+    hidden_background: str = ""
+    # 表达特点：说话风格、沉默、回避等行为特征
+    speech_style: str = ""
+    # 谈前准备：基本资料 + 可观察近况 -> 准备笔记
+    notes: str = ""
+    # 可控分支：服务端可在对话中动态注入的事件/背景（后续扩展）
+    branches: list[str] = Field(default_factory=list)
+
+
+def build_system_prompt(role: RoleConfig) -> str:
+    lines = [
+        f"你现在扮演一名学生「{role.name}」，{role.age} 岁。",
+        f"当前谈心场景：{role.scenario}。",
+    ]
+    if role.hidden_background:
+        lines.append(f"【隐藏背景】{role.hidden_background}")
+    if role.speech_style:
+        lines.append(f"【表达特点】{role.speech_style}")
+    if role.notes:
+        lines.append(f"【谈前准备 / 可观察近况】{role.notes}")
+    lines.append(
+        "请始终以这名学生的身份、用口语化的中文简短回应（一两句即可），"
+        "符合你的年龄与情绪状态；不要跳出角色，不要解释你在扮演，不要使用括号动作描述。"
+    )
+    return "\n".join(lines)
