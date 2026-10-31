@@ -54,3 +54,19 @@ git checkout m1 -- backend/
 3. 不加设计文档 4.2 之外的新依赖。
 
 改完代码跑 `python scripts\check_boundaries.py`，它会替你检查前两条。
+
+## 代码托管
+
+- **合作仓库（主）**：`git@github.com:joystudying/TanXinXiaoFu.git` —— 后续提交推这里
+- 个人备份：`git@github.com:lovezexiaoze/tanxin.git`（`origin`）
+
+当前开发分支 `integrate`（已推到合作仓库，待对方评审合并到 main）。
+
+```powershell
+cd D:\tanxin
+python scripts\check_boundaries.py        # 先过边界检查
+python -m pytest backend\tests            # 再跑测试
+git add -A
+git commit -m "说明"
+git push collab integrate                 # 推到合作仓库
+```
