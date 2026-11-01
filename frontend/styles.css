@@ -3515,3 +3515,47 @@ h2 {
   font-size: 12.5px;
 }
 .setup-banner a { color: #8a542e; font-weight: 600; }
+
+/* ---------- 接入 AI 页面 ---------- */
+.setup-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 18px;
+  margin-top: 18px;
+}
+.setup-card { padding: 20px 22px; }
+.setup-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.setup-head h2 { margin: 0; font-size: 16px; }
+.setup-status {
+  font-size: 12.5px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: #f3ece4;
+  color: #8a542e;
+}
+.setup-status[data-ok='true'] { background: #e6f4ec; color: #1f6b45; }
+.setup-desc { font-size: 13px; color: var(--muted); line-height: 1.7; margin: 10px 0 16px; }
+.setup-field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; font-size: 13px; }
+.setup-field span { color: var(--muted); }
+.setup-field input, .setup-field select {
+  padding: 9px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font: inherit;
+  font-size: 13.5px;
+  background: #fff;
+  color: var(--ink);
+}
+.setup-field input:focus, .setup-field select:focus {
+  outline: 2px solid var(--green);
+  outline-offset: 1px;
+}
+.setup-row { display: flex; gap: 12px; flex-wrap: wrap; }
+.setup-row .setup-field { flex: 1; min-width: 140px; }
+.setup-actions { display: flex; align-items: center; gap: 12px; margin-top: 20px; flex-wrap: wrap; }
+.setup-msg { font-size: 13px; color: var(--muted); }
+.setup-msg[data-kind='ok'] { color: #1f6b45; }
+.setup-msg[data-kind='error'] { color: #b3261e; }
+.setup-msg[data-kind='warn'] { color: #8a542e; }
+.setup-note { margin-top: 16px; font-size: 12.5px; color: var(--muted); }
+.setup-note code { background: #f4f1ec; padding: 1px 5px; border-radius: 4px; }

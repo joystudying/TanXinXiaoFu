@@ -19,3 +19,7 @@ data/frontend-backup-*/
 data/_*.pcm
 data/_*.wav
 data/_*.json
+
+# 临时备份，含密钥，绝不入库
+data/_env_backup*
+

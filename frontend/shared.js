@@ -44,6 +44,7 @@ const navigation = [
   ['conversation', '谈话训练', 'conversation.html'],
   ['review', '评价与复盘', 'review.html'],
   ['records', '训练记录', 'records.html'],
+  ['setup', '接入 AI', 'setup.html'],
 ]
 document.querySelector('[data-header]').innerHTML =
   `<div class="header-inner"><a class="brand" href="index.html" aria-label="谈心小辅，返回场景选择"><img class="brand-logo" src="assets/tanxin-logo-jade.png" alt="谈心小辅" width="224" height="75" /><span class="brand-caption">辅导员训练空间</span></a><nav aria-label="主导航">${navigation.map(([key, label, href]) => `<a href="${href}" ${key === current ? 'aria-current="page"' : ''}>${label}</a>`).join('')}</nav><div class="account"><span class="account-avatar">林</span><span>林老师</span></div></div>`

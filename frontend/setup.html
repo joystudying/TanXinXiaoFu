@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>接入 AI · 谈心小辅</title>
+    <link rel="stylesheet" href="styles.css" />
+    <script src="shared.js" defer></script>
+  </head>
+  <body data-page="setup">
+    <a class="skip" href="#main">跳到主要内容</a>
+    <header class="site-header" data-header></header>
+    <main id="main" class="main">
+      <div class="page-heading">
+        <h1>接入 AI</h1>
+        <p class="page-sub">填一次就行，保存后立刻生效，重启也还在。</p>
+      </div>
+
+      <div class="setup-grid">
+        <section class="surface setup-card">
+          <div class="setup-head">
+            <h2>语言模型（扮演学生）</h2>
+            <span class="setup-status" id="llmStatus">读取中…</span>
+          </div>
+          <p class="setup-desc">
+            文字对练必需。没有它服务会拒绝启动。
+            密钥在 <a href="https://platform.deepseek.com" target="_blank" rel="noopener">platform.deepseek.com</a> 申请。
+          </p>
+          <label class="setup-field">
+            <span>API Key</span>
+            <input id="deepseekKey" type="password" autocomplete="off"
+                   placeholder="sk-… 留空表示不修改" />
+          </label>
+          <div class="setup-row">
+            <label class="setup-field">
+              <span>服务地址</span>
+              <input id="modelBase" type="text" autocomplete="off" placeholder="https://api.deepseek.com" />
+            </label>
+            <label class="setup-field">
+              <span>模型名</span>
+              <input id="modelName" type="text" autocomplete="off" placeholder="deepseek-chat" />
+            </label>
+          </div>
+        </section>
+
+        <section class="surface setup-card">
+          <div class="setup-head">
+            <h2>实时语音（真双工）</h2>
+            <span class="setup-status" id="rtStatus">读取中…</span>
+          </div>
+          <p class="setup-desc">
+            想用「实时通话」才需要。在
+            <a href="https://console.volcengine.com/speech/app" target="_blank" rel="noopener">火山引擎控制台</a>
+            创建应用并勾选「豆包端到端实时语音大模型」，然后到服务详情页最下方复制。
+          </p>
+          <label class="setup-field">
+            <span>APP ID</span>
+            <input id="volcAppId" type="text" autocomplete="off" placeholder="例如 1786811644" />
+          </label>
+          <label class="setup-field">
+            <span>Access Token</span>
+            <input id="volcToken" type="password" autocomplete="off"
+                   placeholder="留空表示不修改" />
+          </label>
+        </section>
+
+        <section class="surface setup-card">
+          <div class="setup-head">
+            <h2>语音合成与识别</h2>
+            <span class="setup-status" id="voiceStatus">读取中…</span>
+          </div>
+          <p class="setup-desc">按轮模式用。默认免费，不用改。</p>
+          <div class="setup-row">
+            <label class="setup-field">
+              <span>合成方案</span>
+              <select id="ttsProvider">
+                <option value="edge">edge-tts（免费，推荐）</option>
+                <option value="stub">不发声</option>
+              </select>
+            </label>
+            <label class="setup-field">
+              <span>音色</span>
+              <input id="ttsVoice" type="text" autocomplete="off" placeholder="zh-CN-YunxiNeural" />
+            </label>
+          </div>
+          <div class="setup-row">
+            <label class="setup-field">
+              <span>识别方案</span>
+              <select id="asrProvider">
+                <option value="stub">浏览器自带（免部署）</option>
+                <option value="funasr">本地 FunASR（需另起服务）</option>
+              </select>
+            </label>
+          </div>
+        </section>
+      </div>
+
+      <div class="setup-actions">
+        <button class="button primary" id="btnSave" type="button">保存并生效</button>
+        <button class="button outline" id="btnTest" type="button">测试连通</button>
+        <span class="setup-msg" id="setupMsg" role="status"></span>
+      </div>
+
+      <p class="setup-note">
+        密钥只写进本机的 <code>.env</code>，不进仓库、不回显、不写日志。
+        换电脑或换服务商时，回到这一页改就行。
+      </p>
+    </main>
+    <footer class="site-footer" data-footer></footer>
+    <script type="module" src="js/setup.js"></script>
+  </body>
+</html>
