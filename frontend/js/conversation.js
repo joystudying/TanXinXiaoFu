@@ -8,6 +8,7 @@ import { createRecognizer } from './speech.js';
 import { speak, stopSpeaking, describeVoice } from './speak.js';
 import { createBargeInWatcher, canWatchBargeIn } from './vad.js';
 import { probeCapabilities, Tier, tierSummary } from './capabilities.js';
+import { startRealtime, realtimeSupported } from './realtime.js';
 
 const CASE_ID = 'c_academic_01';
 const LS_SESSION = 'tanxin.session_id';
@@ -27,6 +28,8 @@ const ui = {
   mic: $('#btnMic'),
   micLabel: $('[data-mic-label]'),
   micHint: $('[data-mic-hint]'),
+  rt: $('#btnRealtime'),
+  rtLabel: $('[data-rt-label]'),
   manual: $('#manualText'),
   send: $('#btnSend'),
   end: $('#btnEnd'),
@@ -61,6 +64,7 @@ let watcherReady = false;
 let voiceHinted = false;
 let voiceDisabled = false;      // 档位判定为纯文字时，禁用语音入口
 let capabilityReport = null;
+let rtSession = null;          // 正在跑的实时通话
 
 // ---------------- 渲染 ----------------
 
@@ -352,6 +356,47 @@ function bind() {
 
   ui.end?.addEventListener('click', endSession);
 
+  ui.rt?.addEventListener('click', async () => {
+    if (rtSession) {                       // 正在通话 → 结束
+      rtSession.stop();
+      rtSession = null;
+      ui.rt.setAttribute('aria-pressed', 'false');
+      if (ui.rtLabel) ui.rtLabel.textContent = '实时通话';
+      setState(State.IDLE, '实时通话已结束');
+      return;
+    }
+    if (!realtimeSupported()) {
+      notice('这个浏览器不支持实时通话（需要 AudioWorklet + 麦克风）。');
+      return;
+    }
+    notice('');
+    ui.rt.setAttribute('aria-pressed', 'true');
+    if (ui.rtLabel) ui.rtLabel.textContent = '结束通话';
+    try {
+      rtSession = await startRealtime({
+        onStatus: (state, text) => {
+          if (state === 'speaking') setState(State.SPEAKING, text);
+          else if (state === 'listening' || state === 'ready') setState(State.LISTENING, text);
+          else if (state === 'error') setState(State.ERROR, text);
+          else setState(State.IDLE, text);
+        },
+        onTeacherText: (text) => {
+          appendMessage('teacher', text, Math.ceil((document.querySelectorAll('.message').length + 1) / 2));
+        },
+        onStudentText: (text) => {
+          appendMessage('student', text, Math.ceil((document.querySelectorAll('.message').length) / 2));
+          showQuote(text);
+        },
+        onError: (code, message) => notice(`${message || '实时语音出错'}（${code}）`),
+      });
+    } catch (e) {
+      rtSession = null;
+      ui.rt.setAttribute('aria-pressed', 'false');
+      if (ui.rtLabel) ui.rtLabel.textContent = '实时通话';
+      notice('实时通话启动失败：' + (e?.message || e));
+    }
+  });
+
   window.addEventListener('beforeunload', () => {
     recognizer?.abort();
     stopSpeaking();
@@ -369,7 +414,15 @@ async function applyCapabilities() {
       ui.mic.title = '当前环境已切到文字模式';
     }
     notice(`${tierSummary(capabilityReport)}。可以直接在下面打字，功能一样完整。`);
-  } else if (capabilityReport.device.weak) {
+  }
+  // 实时通话：服务端配了火山、浏览器也支持，才放出来
+  if (ui.rt) {
+    const ready = Boolean(capabilityReport.server?.realtime?.ready)
+      && realtimeSupported();
+    ui.rt.disabled = !ready;
+    ui.rt.title = ready ? '端到端模型直接对话，可随时打断' : '服务端未配置实时语音';
+  }
+  if (capabilityReport.device.weak) {
     notice(`检测到本机配置较低，已选用「${tierSummary(capabilityReport)}」，不会占用本地算力。`);
   }
   return capabilityReport;

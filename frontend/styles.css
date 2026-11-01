@@ -3479,3 +3479,11 @@ h2 {
   .presence-photo { width: 112px; height: 112px; }
   .wave-row { display: none; }
 }
+/* ---------- M5 实时通话按钮 ---------- */
+.mic-controls { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+#btnRealtime[aria-pressed='true'] {
+  background: var(--green);
+  border-color: var(--green);
+  color: #fff;
+}
+#btnRealtime[aria-pressed='true'] .force-icon { color: #fff; }
