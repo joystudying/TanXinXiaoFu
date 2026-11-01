@@ -146,6 +146,19 @@ function showQuote(text) {
   ui.quoteBox.hidden = false;
 }
 
+function showSetupBanner(html) {
+  let el = document.getElementById('setup-banner');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'setup-banner';
+    el.className = 'setup-banner';
+    el.setAttribute('role', 'status');
+    document.querySelector('.stage')?.prepend(el);
+  }
+  el.innerHTML = html;
+  el.hidden = false;
+}
+
 function notice(msg) {
   if (!ui.notice) return;
   ui.notice.textContent = msg;
@@ -438,8 +451,23 @@ function bind() {
   });
 }
 
+const GUIDE_URL = 'https://github.com/joystudying/TanXinXiaoFu/blob/integrate/docs/公告_新用户接入指南.md';
+
 async function applyCapabilities() {
   capabilityReport = await probeCapabilities();
+
+  // 没配模型密钥：直接用横幅把话说清楚，并给一个能点的指引
+  if (capabilityReport.server && !capabilityReport.server.llm?.ready) {
+    showSetupBanner(
+      '还没接入 AI：请在项目根目录的 <code>.env</code> 里填 <code>DEEPSEEK_API_KEY</code>，'
+      + `然后重启服务。<a href="${GUIDE_URL}" target="_blank" rel="noopener">查看接入指南 →</a>`
+    );
+  } else if (capabilityReport.server && !capabilityReport.server.realtime?.ready) {
+    showSetupBanner(
+      '实时语音未开通：填 <code>VOLC_APP_ID</code> 和 <code>VOLC_ACCESS_TOKEN</code> 后重启，'
+      + `即可使用「实时通话」。<a href="${GUIDE_URL}" target="_blank" rel="noopener">查看接入指南 →</a>`
+    );
+  }
   // 纯文字档：直接禁用麦克风，避免用户点了没反应
   if (capabilityReport.tier === Tier.TEXT) {
     voiceDisabled = true;
