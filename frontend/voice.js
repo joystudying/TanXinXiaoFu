@@ -298,5 +298,77 @@
       playPcm16(state.lastTeacherPcm)
     })
 
+  // ---------- 实时通话（真双工，可选；走 /ws/voice） ----------
+  const rtBtn = document.querySelector('[data-voice-realtime]')
+  const rtLabel = document.querySelector('[data-voice-realtime-label]')
+  let rtSession = null
+
+  function endRealtime() {
+    rtSession = null
+    if (rtLabel) rtLabel.textContent = '实时通话'
+    if (els.mic) els.mic.disabled = false
+    if (els.send) els.send.disabled = false
+    if (els.input) els.input.disabled = false
+  }
+
+  async function toggleRealtime() {
+    if (rtSession) {
+      rtSession.stop()
+      endRealtime()
+      setStatus('等待你的回应')
+      return
+    }
+    let mod
+    try {
+      mod = await import('./js/realtime.js')
+    } catch (e) {
+      notice('实时通话模块加载失败：' + (e && e.message ? e.message : e))
+      return
+    }
+    if (!mod.realtimeSupported()) {
+      notice('这个浏览器不支持实时通话（需要 AudioWorklet + 麦克风），请用 Edge / Chrome。')
+      return
+    }
+    // 实时模式先关掉回合制输入，避免抢麦克风
+    if (els.mic) els.mic.disabled = true
+    if (els.send) els.send.disabled = true
+    if (els.input) els.input.disabled = true
+    if (rtLabel) rtLabel.textContent = '结束通话'
+    setStatus('正在建立实时语音…')
+    try {
+      rtSession = await mod.startRealtime({
+        onStatus: (s, text) => {
+          if (s === 'speaking') setStatus(text || '学生在说…')
+          else if (s === 'listening' || s === 'ready') setStatus(text || '听着，你继续说')
+          else if (s === 'error') setStatus(text || '实时语音出错')
+          else if (s === 'closed') {
+            setStatus('实时通话已断开')
+            endRealtime()
+          } else setStatus(text || '实时通话')
+        },
+        onTeacherText: (text) => {
+          const t = (text || '').trim()
+          if (!t) return
+          state.turn += 1
+          appendMessage('teacher', t)
+          if (els.round) els.round.textContent = `第${state.turn}轮`
+        },
+        onStudentText: (text) => {
+          const t = (text || '').trim()
+          if (!t) return
+          appendMessage('student', t)
+          if (els.response) els.response.textContent = `“${t}”`
+        },
+        onError: (code, message) => notice(`${message || '实时语音出错'}（${code}）`),
+        onSession: (id) => persistSession(id),
+      })
+    } catch (e) {
+      endRealtime()
+      notice('实时通话启动失败：' + (e && e.message ? e.message : e))
+    }
+  }
+
+  if (rtBtn) rtBtn.addEventListener('click', toggleRealtime)
+
   connect()
 })()

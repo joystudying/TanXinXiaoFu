@@ -34,6 +34,17 @@ def build_providers() -> tuple[LLMProvider, ASRProvider, TTSProvider]:
     return llm, asr, tts
 
 
+def build_asr() -> ASRProvider | None:
+    """只构建 ASR（供实时链路旁听转写用，不依赖 LLM/TTS 的密钥）。
+
+    funasr 未启用时返回 None，调用方自行回退（如火山自带转写）。
+    """
+    s = get_settings()
+    if s.asr_provider == "funasr":
+        return FunASRProvider(s.funasr_service_url)
+    return None
+
+
 def build_evaluator() -> EvaluatorProvider:
     s = get_settings()
 

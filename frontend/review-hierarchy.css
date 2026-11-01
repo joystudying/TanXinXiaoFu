@@ -370,6 +370,31 @@ body[data-page='review'] .main {
   color: var(--r-muted);
 }
 
+/* 报告翻页：屏幕上一次只显示一页「纸」，用上一页/下一页翻动。 */
+.report-pages .report-sheet[hidden] {
+  display: none;
+}
+.report-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  margin: 2px 0 10px;
+  padding: 4px 0;
+}
+.report-pagination .button {
+  min-height: 42px;
+  padding: 0 20px;
+  font-size: 15px;
+}
+.report-pagination .page-indicator {
+  min-width: 96px;
+  text-align: center;
+  font-size: 15px;
+  color: var(--r-muted);
+  font-variant-numeric: tabular-nums;
+}
+
 /* 证据区：纵向单列，靠细线分区。 */
 .evidence-workspace {
   display: grid;
@@ -719,6 +744,7 @@ body[data-page='review'] :is(a, button, [tabindex]):focus-visible {
   .skip,
   .report-toolbar,
   .review-directory,
+  .report-pagination,
   .preview-notice,
   .practice-heading .button {
     display: none !important;
@@ -738,6 +764,9 @@ body[data-page='review'] :is(a, button, [tabindex]):focus-visible {
   }
   .report-sheet:last-of-type {
     break-after: auto;
+  }
+  .report-pages .report-sheet[hidden] {
+    display: block !important;
   }
   .sheet-heading {
     padding-bottom: 2mm;

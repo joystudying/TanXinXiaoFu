@@ -1,6 +1,7 @@
 """异步数据库：默认 SQLite（开箱即用），改 DATABASE_URL 可切 PostgreSQL。"""
 import os
 
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase
 
@@ -24,3 +25,10 @@ async def init_db() -> None:
             os.makedirs(directory, exist_ok=True)
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+        # 轻量迁移：create_all 不会给已存在的表加列，老库手动补 turns.mode
+        if url.startswith("sqlite"):
+            cols = (await conn.execute(text("PRAGMA table_info(turns)"))).fetchall()
+            if "mode" not in {row[1] for row in cols}:
+                await conn.execute(text(
+                    "ALTER TABLE turns ADD COLUMN mode VARCHAR(16) NOT NULL DEFAULT 'pipeline'"
+                ))

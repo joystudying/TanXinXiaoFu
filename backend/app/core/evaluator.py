@@ -23,23 +23,33 @@ def build_rubric_text() -> str:
 
 
 def turns_to_transcript(turns) -> str:
-    """把 turns（已按 id 排序）切分成「第 N 轮：老师 → 学生」的文本。"""
+    """把 turns（已按 id 排序）切分成「第 N 轮：老师 → 学生」的文本。
+
+    实时模式下老师侧可能被 ASR 断成多段、或学生先于老师转写到达，
+    这里做两道容错：连续同角色合并成一条；学生先到时落到开场而不丢。
+    """
     rounds = []
-    current = None
     for t in turns:
-        if t.role == "teacher":
-            current = {"teacher": t.text, "student": ""}
-            rounds.append(current)
-        elif current is not None:
-            if current["student"]:
-                current["student"] += "\n" + t.text
+        role = t.role
+        text = (t.text or "").strip()
+        if not text:
+            continue
+        if role == "teacher":
+            if rounds and rounds[-1]["teacher"] and not rounds[-1]["student"]:
+                # 上一轮老师还没等到学生回应，又是老师 → 并入上一轮（不拆轮）
+                rounds[-1]["teacher"] += "\n" + text
             else:
-                current["student"] = t.text
+                rounds.append({"teacher": text, "student": ""})
+        else:  # student
+            if not rounds:
+                rounds.append({"teacher": "", "student": ""})
+            rounds[-1]["student"] = (rounds[-1]["student"] + "\n" + text).strip()
 
     lines = []
     for i, r in enumerate(rounds, 1):
         lines.append(f"第 {i} 轮")
-        lines.append(f"老师：{r['teacher']}")
+        if r["teacher"]:
+            lines.append(f"老师：{r['teacher']}")
         if r["student"]:
             lines.append(f"学生：{r['student']}")
     return "\n".join(lines)

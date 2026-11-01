@@ -13,6 +13,7 @@ async def save_turn(
     role: str,
     text: str,
     emotion: str | None = None,
+    mode: str = "pipeline",
 ) -> None:
     async with SessionLocal() as session:
         session.add(
@@ -20,6 +21,7 @@ async def save_turn(
                 session_id=session_id,
                 scenario=scenario,
                 role=role,
+                mode=mode,
                 text=text,
                 emotion=emotion,
             )

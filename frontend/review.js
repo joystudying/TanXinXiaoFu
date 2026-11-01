@@ -71,6 +71,23 @@
     return bySentence.length ? bySentence : text ? [String(text)] : []
   }
 
+  function renderTranscript(turns) {
+    if (!Array.isArray(turns) || !turns.length) {
+      return '<p class="report-note">暂无对话记录。</p>'
+    }
+    const rows = turns
+      .map((t) => {
+        const isTeacher = t.role === 'teacher'
+        const cls = isTeacher ? ' class="teacher-turn"' : ''
+        return (
+          '<div' + cls + '><dt>' + (isTeacher ? '辅导员' : '学生') + '</dt>' +
+          '<dd>' + escapeHtml(t.text) + '</dd></div>'
+        )
+      })
+      .join('')
+    return '<dl class="dialogue-transcript">' + rows + '</dl>'
+  }
+
   function setMessage(html) {
     root.innerHTML =
       '<div style="padding:48px 16px;text-align:center;color:var(--ink);font-size:15px">' +
@@ -121,6 +138,51 @@
     )
   }
 
+  // 翻页：一次只显示一页「纸」，用上一页/下一页翻动；打印时全部展开（CSS 处理）。
+  function setupPagination() {
+    const sheets = Array.from(root.querySelectorAll('.report-pages .report-sheet'))
+    const prev = root.querySelector('[data-page-prev]')
+    const next = root.querySelector('[data-page-next]')
+    const indicator = root.querySelector('[data-page-indicator]')
+    if (!sheets.length || !prev || !next || !indicator) return
+
+    let current = 0
+    function show(i) {
+      current = Math.max(0, Math.min(sheets.length - 1, i))
+      sheets.forEach((s, k) => { s.hidden = k !== current })
+      prev.disabled = current === 0
+      next.disabled = current === sheets.length - 1
+      indicator.textContent = '第 ' + (current + 1) + ' / ' + sheets.length + ' 页'
+    }
+
+    prev.addEventListener('click', () => {
+      show(current - 1)
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+    })
+    next.addEventListener('click', () => {
+      show(current + 1)
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+    })
+
+    // 目录链接跨页跳转：先切到目标所在页，再滚到该节
+    const directory = document.querySelector('.review-directory')
+    if (directory) {
+      directory.addEventListener('click', (e) => {
+        const a = e.target.closest('a[href^="#"]')
+        if (!a) return
+        e.preventDefault()
+        const target = document.getElementById(a.getAttribute('href').slice(1))
+        if (!target) return
+        const sheet = target.closest('.report-sheet')
+        const idx = sheet ? sheets.indexOf(sheet) : -1
+        if (idx >= 0) show(idx)
+        target.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      })
+    }
+
+    show(0)
+  }
+
   function renderReport(data) {
     const dims = data.dimensions || []
     const total = Number(data.total_score) || 0
@@ -132,8 +194,13 @@
       if (Number(d.score) < Number(low.score)) low = d
     }
 
+    const firstTurn = Array.isArray(data.turns) && data.turns.length ? data.turns[0] : null
+    const modeLabel = firstTurn && firstTurn.mode === 'realtime' ? '实时通话'
+      : firstTurn && firstTurn.mode === 'pipeline' ? '语音/文字对练' : '—'
+
     const facts = [
       ['训练场景', data.scenario || '—'],
+      ['训练方式', modeLabel],
       ['综合得分', total + ' / 100'],
       ['评价维度', dims.length + ' 维'],
       ['会话编号', sessionId ? sessionId.slice(0, 8) : '—'],
@@ -171,6 +238,7 @@
       .join('')
 
     root.innerHTML =
+      '<div class="report-pages">' +
       '<article class="report-sheet" aria-label="第1页：评价总览">' +
       '<header class="sheet-heading"><h2>谈话训练评价报告</h2><span class="sheet-page">01 / 02</span></header>' +
       '<dl class="report-facts">' +
@@ -218,13 +286,18 @@
 
       '<article class="report-sheet" aria-label="第2页：对话分析与改进">' +
       '<header class="sheet-heading"><h2>对话分析与改进计划</h2><span class="sheet-page">02 / 02</span></header>' +
+      '<section id="review-transcript" class="report-section">' +
+      '<h2 class="report-section-title"><span aria-hidden="true">三</span>完整对话记录</h2>' +
+      '<p class="report-note">本次对话转写（按发言顺序），供对照下方点评定位原话。</p>' +
+      renderTranscript(data.turns) +
+      '</section>' +
       '<section id="review-evidence" class="report-section">' +
-      '<h2 class="report-section-title"><span aria-hidden="true">三</span>五维点评与证据</h2>' +
+      '<h2 class="report-section-title"><span aria-hidden="true">四</span>五维点评与证据</h2>' +
       evidenceBlocks +
       '</section>' +
       '<section id="review-next" class="report-section">' +
       '<div class="practice-heading">' +
-      '<h2 class="report-section-title"><span aria-hidden="true">四</span>下一轮练习计划</h2>' +
+      '<h2 class="report-section-title"><span aria-hidden="true">五</span>下一轮练习计划</h2>' +
       '<a class="button" href="conversation.html"><span data-icon="refresh"></span>再练一次</a>' +
       '</div>' +
       (practiceItems
@@ -232,9 +305,17 @@
         : '<p class="report-note">暂无明确建议。</p>') +
       '</section>' +
       '<footer class="sheet-footer"><span>本报告用于训练复盘，不代替专业判断</span><span>第2页 / 共2页</span></footer>' +
-      '</article>'
+      '</article>' +
+      '</div>' +
+      '<nav class="report-pagination" aria-label="报告分页">' +
+        '<button type="button" class="button outline" data-page-prev disabled>上一页</button>' +
+        '<span class="page-indicator" data-page-indicator>第 1 / 2 页</span>' +
+        '<button type="button" class="button" data-page-next>下一页</button>' +
+      '</nav>'
 
-    // 重新水合图标（“再练一次”按钮里的 refresh 图标）
+    setupPagination()
+
+    // 重新水合图标（"再练一次"按钮里的 refresh 图标）
     if (window.hydrateIcons) window.hydrateIcons(root)
   }
 

@@ -16,7 +16,7 @@ import uuid
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
 from ..core.orchestrator import Orchestrator
-from ..core.role import RoleConfig
+from ..core.role import DEFAULT_ROLE
 from ..providers import build_providers
 from ..repo import save_turn
 
@@ -24,24 +24,6 @@ router = APIRouter()
 
 llm, asr, tts = build_providers()
 orchestrator = Orchestrator(llm, asr, tts)
-
-# 默认学生角色（演示用）：隐藏背景只在此处、只在服务端
-DEFAULT_ROLE = RoleConfig(
-    name="小悦",
-    age=16,
-    scenario="情绪困扰",
-    hidden_background=(
-        "最近一次月考成绩下滑明显；父母近期经常争吵；"
-        "不想让老师知道自己昨晚偷偷哭过。"
-    ),
-    speech_style=(
-        "说话简短，常先否认自己有事（比如「没事」「我挺好的」），"
-        "被温和追问几次后才会慢慢透露真实感受，偶尔沉默。"
-    ),
-    notes="该生近期上课走神、作业完成质量下降、与同学互动减少。",
-    branches=["被问到成绩时情绪激动", "提到父母时沉默回避"],
-)
-
 
 @router.websocket("/ws/chat")
 async def ws_chat(ws: WebSocket) -> None:

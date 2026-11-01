@@ -33,6 +33,18 @@ class Settings(BaseSettings):
     evaluator_provider: str = "deepseek"
     evaluator_model: str = "deepseek-chat"  # 可换 deepseek-reasoner（推理更强、更慢）
 
+    # 实时语音（火山豆包实时语音模型 3.0，Seeduplex 全双工；可选，不配则只走回合制）
+    volc_app_id: str = ""
+    volc_api_key: str = ""
+    volc_model: str = "1.2.6.0"
+    volc_ws_url: str = "wss://openspeech.bytedance.com/api/v3/duplex/realtime/dialogue"
+    volc_speaker: str = "zh_female_vv_jupiter_bigtts"
+
+    @property
+    def realtime_configured(self) -> bool:
+        """真双工是否可用：App ID 与 API Key 都填了才算。"""
+        return bool(self.volc_app_id.strip() and self.volc_api_key.strip())
+
     # 存储
     database_url: str = "sqlite+aiosqlite:///./data/app.db"
 

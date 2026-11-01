@@ -17,6 +17,7 @@ class Turn(Base):
     session_id: Mapped[str] = mapped_column(String(64), index=True)
     scenario: Mapped[str] = mapped_column(String(64), default="")
     role: Mapped[str] = mapped_column(String(16), default="user")  # teacher | student
+    mode: Mapped[str] = mapped_column(String(16), default="pipeline")  # pipeline | realtime
     text: Mapped[str] = mapped_column(Text, default="")
     emotion: Mapped[str | None] = mapped_column(String(32), nullable=True)
     created_at: Mapped[datetime] = mapped_column(

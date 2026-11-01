@@ -20,6 +20,7 @@ class ReviewResponse(BaseModel):
     dimensions: list
     summary: str
     suggestions: str
+    turns: list = []   # [{role, mode, text}]，按发言顺序，供前端展示完整对话
 
 
 class SessionSummary(BaseModel):
@@ -41,7 +42,7 @@ async def get_review(session_id: str) -> ReviewResponse:
     e = await get_evaluation(session_id)
     if e is None:
         raise HTTPException(404, "该会话尚未生成复盘")
-    return _to_response(session_id, e)
+    return await _to_response(session_id, e)
 
 
 @router.post("/{session_id}/review", response_model=ReviewResponse)
@@ -71,10 +72,12 @@ async def create_review(session_id: str) -> ReviewResponse:
         dimensions=result.dimensions,
         summary=result.summary,
         suggestions=result.suggestions,
+        turns=[{"role": t.role, "mode": t.mode, "text": t.text} for t in turns],
     )
 
 
-def _to_response(session_id: str, e) -> ReviewResponse:
+async def _to_response(session_id: str, e) -> ReviewResponse:
+    turns = await list_turns(session_id)
     return ReviewResponse(
         session_id=session_id,
         scenario=e.scenario,
@@ -82,4 +85,5 @@ def _to_response(session_id: str, e) -> ReviewResponse:
         dimensions=e.dimensions,
         summary=e.summary,
         suggestions=e.suggestions,
+        turns=[{"role": t.role, "mode": t.mode, "text": t.text} for t in turns],
     )

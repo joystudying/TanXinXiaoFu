@@ -4,10 +4,14 @@
 独立进程提供（建议跑在 Python 3.10/3.11 环境）。解耦后主后端不受 FunASR 依赖影响。
 """
 import base64
+import re
 
 import httpx
 
 from .base import ASRProvider
+
+# paraformer 未启用标点模型（ct-punc）时，输出会在字词之间插空格；中文不需要，收拢。
+_CJK_GAP = re.compile(r"(?<=[一-鿿])\s+(?=[一-鿿])")
 
 
 class FunASRProvider(ASRProvider):
@@ -25,4 +29,5 @@ class FunASRProvider(ASRProvider):
                 },
             )
             resp.raise_for_status()
-            return resp.json().get("text", "")
+            text = resp.json().get("text", "")
+            return _CJK_GAP.sub("", text).strip()

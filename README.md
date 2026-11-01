@@ -36,6 +36,7 @@ backend/                   FastAPI 服务端（编排 + 可插拔 Provider + 持
 frontend/             原生 HTML 前端（无需构建）
   index.html               首页 / 场景选择（静态）
   conversation.html + voice.js   谈话训练（语音/文字，接后端）
+  js/audio-capture.js 等         实时通话底层（收音 + 播放 + 打断，接 /ws/voice）
   records.html + records.js      训练记录列表（接 GET /sessions）
   review.html + review.js        复盘报告（接 GET/POST /sessions/{id}/review）
   details.html / import.html 等  案例详情 / 导入（UI 壳，待接 RAG）
@@ -52,7 +53,8 @@ tools/
 | 评价 LLM（督导）| DeepSeek（独立模型/提示词）| ✅ 已接 |
 | TTS | edge-tts（免费，无需 GPU）| ✅ 已接 |
 | ASR | FunASR（自部署）| ✅ 已接 |
-| VAD / 打断 | Silero | 🔜 后续（当前整句往返）|
+| 实时语音（全双工）| 火山豆包实时语音模型 3.0（Seeduplex）| ✅ 已接 |
+| VAD / 打断 | 实时模式内置；回合制待加 | 🔜 后续 |
 | 存储 | SQLite（默认）/ PostgreSQL | ✅ |
 
 > 未来升级：TTS 换成 IndexTTS2（需 GPU + 情绪向量），ASR 可换讯飞/阿里，LLM 可换 Claude——都只需新增一个 Provider 实现类。
@@ -73,6 +75,7 @@ pip install -r requirements.txt
 
 cp .env.example .env        # 编辑 .env：填 DEEPSEEK_API_KEY
                             # ASR_PROVIDER=stub 可先跑纯文字；=funasr 走本地识别
+                            # 可选：填 VOLC_APP_ID + VOLC_API_KEY 解锁「实时通话」
 
 uvicorn app.main:app --port 8000
 ```
@@ -119,6 +122,15 @@ caddy run --config tools/caddy/Caddyfile
 {"type":"ready","session_id":"...","student_name":"小悦","scenario":"情绪困扰"}
 {"type":"reply","text":"学生回复","emotion":null,"audio_b64":"...","audio_format":"mp3"}
 ```
+
+### WebSocket `/ws/voice`（真双工实时语音，可选）
+
+配好 `VOLC_APP_ID` + `VOLC_API_KEY` 后，谈话页点「实时通话」走此端点（密钥只在服务端）：
+
+- 浏览器 → 服务端：二进制 PCM16 / 16kHz / 单声道（20ms 一帧），JSON 控制 `{"type":"cancel|mute|unmute|finish"}`
+- 服务端 → 浏览器：`ready`（含 session_id）、二进制 pcm_s16le / 24kHz 学生语音、`event`（转写文本 / 状态）
+
+转写与回合制共用 `turns` 表，复盘照旧。
 
 ### REST
 
