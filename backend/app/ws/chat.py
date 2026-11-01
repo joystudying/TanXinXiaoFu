@@ -15,10 +15,11 @@ import uuid
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
+from ..core.cases import case_to_role
 from ..core.orchestrator import Orchestrator
 from ..core.role import DEFAULT_ROLE
 from ..providers import build_providers
-from ..repo import save_turn
+from ..repo import case_to_dict, get_case, save_turn
 
 router = APIRouter()
 
@@ -28,14 +29,22 @@ orchestrator = Orchestrator(llm, asr, tts)
 @router.websocket("/ws/chat")
 async def ws_chat(ws: WebSocket) -> None:
     await ws.accept()
-    session_id = uuid.uuid4().hex
-    state = orchestrator.new_session(session_id, DEFAULT_ROLE)
+    case_id = ws.query_params.get("case_id")
+    session_id = ws.query_params.get("session_id") or uuid.uuid4().hex
+
+    role = DEFAULT_ROLE
+    if case_id:
+        case = await get_case(case_id)
+        if case:
+            role = case_to_role(case_to_dict(case))
+
+    state = orchestrator.new_session(session_id, role)
     await ws.send_json(
         {
             "type": "ready",
             "session_id": session_id,
-            "student_name": DEFAULT_ROLE.name,
-            "scenario": DEFAULT_ROLE.scenario,
+            "student_name": role.name,
+            "scenario": role.scenario,
         }
     )
 
@@ -61,7 +70,7 @@ async def ws_chat(ws: WebSocket) -> None:
 
             elif mtype == "reset":
                 session_id = uuid.uuid4().hex
-                state = orchestrator.new_session(session_id, DEFAULT_ROLE)
+                state = orchestrator.new_session(session_id, role)
                 out = {
                     "text": "",
                     "emotion": None,

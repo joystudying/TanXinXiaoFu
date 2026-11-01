@@ -59,54 +59,6 @@ hydrateIcons()
 const transcriptMessages = document.querySelector('.transcript-messages')
 if (transcriptMessages) transcriptMessages.scrollTop = transcriptMessages.scrollHeight
 
-const categoryButtons = [...document.querySelectorAll('[data-category]')]
-const categoryTitles = {
-  academic: ['学业困难', '了解困难，回应挫败感'],
-  emotion: ['情绪困扰', '练习倾听与回应感受'],
-  relationship: ['人际关系', '理解分歧，支持表达边界'],
-  family: ['家庭困境', '尊重隐私，讨论支持'],
-  career: ['就业迷茫', '澄清选择，协商下一步'],
-  risk: ['危机识别与联动', '练习风险确认与支持联动'],
-}
-const caseRows = [...document.querySelectorAll('[data-case-row]')]
-const caseSearch = document.querySelector('[data-search-cases]')
-const searchEmpty = document.querySelector('[data-search-empty]')
-
-function activeCategory() {
-  return (
-    document.querySelector('[data-category][aria-pressed="true"]')?.dataset.category ?? 'academic'
-  )
-}
-
-function applyCaseFilter() {
-  const category = activeCategory()
-  const query = caseSearch?.value.trim() ?? ''
-  let visible = 0
-  caseRows.forEach((row) => {
-    const matches = row.dataset.category === category && (!query || row.textContent.includes(query))
-    row.hidden = !matches
-    if (matches) visible += 1
-  })
-  if (searchEmpty) searchEmpty.hidden = visible > 0
-}
-
-categoryButtons.forEach((button) =>
-  button.addEventListener('click', () => {
-    categoryButtons.forEach((item) => item.setAttribute('aria-pressed', String(item === button)))
-    const [title, description] = categoryTitles[button.dataset.category]
-    document.querySelector('[data-category-title]').textContent = title
-    document.querySelector('[data-category-description]').textContent = description
-    if (caseSearch) caseSearch.value = ''
-    applyCaseFilter()
-  }),
-)
-caseSearch?.addEventListener('input', applyCaseFilter)
-document.querySelector('[data-clear-search]')?.addEventListener('click', () => {
-  caseSearch.value = ''
-  applyCaseFilter()
-  caseSearch.focus()
-})
-applyCaseFilter()
 const filterButtons = [...document.querySelectorAll('[data-filter]')]
 filterButtons.forEach((button) =>
   button.addEventListener('click', () => {

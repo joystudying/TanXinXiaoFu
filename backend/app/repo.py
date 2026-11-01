@@ -3,8 +3,9 @@ from datetime import timezone
 
 from sqlalchemy import case, func, select
 
+from .core.cases import CATEGORY_ORDER
 from .db import SessionLocal
-from .models import Evaluation, Turn
+from .models import Case, Evaluation, TrainingSession, Turn
 
 
 async def save_turn(
@@ -116,3 +117,76 @@ async def list_sessions() -> list[dict]:
         s["total_score"] = e.total_score if e else None
         s["reviewed"] = e is not None
     return sessions
+
+
+def case_to_dict(c: Case) -> dict:
+    """Case ORM -> 完整 dict（含私有层，仅供服务端内部用）。"""
+    return {
+        "id": c.id,
+        "category": c.category,
+        "name": c.name,
+        "grade_major": c.grade_major,
+        "tagline": c.tagline,
+        "quote": c.quote,
+        "public_background": c.public_background,
+        "goals": c.goals or [],
+        "training_focus": c.training_focus,
+        "duration": c.duration,
+        "avatar": c.avatar,
+        "hidden_background": c.hidden_background,
+        "speech_style": c.speech_style,
+        "branches": c.branches or [],
+        "opening": c.opening,
+        "version": c.version,
+    }
+
+
+async def list_cases() -> list[Case]:
+    """全部案例，按分类顺序返回（供前端「场景选择」页）。"""
+    async with SessionLocal() as session:
+        result = await session.execute(select(Case))
+        rows = list(result.scalars().all())
+    order = {k: i for i, k in enumerate(CATEGORY_ORDER)}
+    rows.sort(key=lambda c: (order.get(c.category, 99), c.id))
+    return rows
+
+
+async def get_case(case_id: str) -> Case | None:
+    async with SessionLocal() as session:
+        result = await session.execute(select(Case).where(Case.id == case_id))
+        return result.scalar_one_or_none()
+
+
+async def seed_cases_if_empty(cases: list[dict]) -> None:
+    """cases 表为空时写入种子案例；已有数据则跳过（幂等）。"""
+    async with SessionLocal() as session:
+        count = (await session.execute(select(func.count(Case.id)))).scalar_one()
+        if count:
+            return
+        for c in cases:
+            session.add(Case(**c))
+        await session.commit()
+
+
+async def create_session(
+    session_id: str, case_id: str, prep_note: str = "", case_version: int = 1
+) -> None:
+    async with SessionLocal() as session:
+        session.add(
+            TrainingSession(
+                id=session_id,
+                case_id=case_id,
+                prep_note=prep_note,
+                case_version=case_version,
+                status="created",
+            )
+        )
+        await session.commit()
+
+
+async def get_session(session_id: str) -> TrainingSession | None:
+    async with SessionLocal() as session:
+        result = await session.execute(
+            select(TrainingSession).where(TrainingSession.id == session_id)
+        )
+        return result.scalar_one_or_none()

@@ -38,7 +38,18 @@
         padding: 9px 16px;
       }
     </style>
+    <style>
+      .presence-initial {
+        display: grid;
+        place-items: center;
+        background: linear-gradient(160deg, #e9f7ef, #d6ecdf);
+        color: #1d5b3d;
+        font-size: 72px;
+        font-weight: 700;
+      }
+    </style>
     <script src="shared.js" defer></script>
+    <script src="cases.js" defer></script>
     <script src="voice.js" defer></script>
   </head>
   <body data-page="conversation">
@@ -47,7 +58,7 @@
     <main id="main" class="main">
       <div class="page-heading conversation-heading coach-conversation-heading">
         <div class="heading-inline">
-          <a class="back-link" href="details.html"><span data-icon="back"></span>案例详情</a>
+          <a class="back-link" href="details.html" data-back-link><span data-icon="back"></span>案例详情</a>
           <h1 data-voice-title>和小陈聊聊</h1>
         </div>
         <div class="coach-welcome">
@@ -65,7 +76,7 @@
       <div class="conversation-grid">
         <section class="surface presence" aria-label="学生与语音操作">
           <div class="presence-top">
-            <span class="badge"><span class="dot"></span>小陈 · 大二 · 学业困难</span
+            <span class="badge"><span class="dot"></span><span data-voice-badge>小陈 · 大二 · 学业困难</span></span
             ><button
               class="text-button"
               data-toggle-transcript
@@ -75,7 +86,7 @@
               <span data-icon="file"></span><span>收起记录</span>
             </button>
           </div>
-          <img class="presence-photo" src="assets/xiaochen.png" alt="小陈" />
+          <div data-voice-photo></div>
           <p class="presence-status"><span class="dot"></span>等待你的回应</p>
           <div class="current-response">
             <blockquote>“其实我不是不想学，就是越落下越多，后来连从哪里补都不知道了。”</blockquote>
@@ -118,7 +129,7 @@
             <div class="presence-bottom">
               <button class="text-button" data-voice-replay-teacher>
                 <span data-icon="headphones"></span>回听上一段录音</button
-              ><a class="text-button" href="details.html"><span data-icon="pen"></span>谈前笔记</a>
+              ><a class="text-button" href="details.html" data-prep-link><span data-icon="pen"></span>谈前笔记</a>
             </div>
           </div>
         </section>

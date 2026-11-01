@@ -39,9 +39,12 @@ export async function startRealtime({
   onStudentText, // (text) => void   学生说的文字（一整句）
   onError,       // (code, message) => void
   onSession,     // (session_id) => void   会话建立后回调（用于复盘链接）
+  caseId,        // 案例 ID，选中的学生角色（可选）
 } = {}) {
   const proto = location.protocol === 'https:' ? 'wss' : 'ws';
-  const url = `${proto}://${location.host}/ws/voice`;
+  const qs = new URLSearchParams();
+  if (caseId) qs.set('case_id', caseId);
+  const url = `${proto}://${location.host}/ws/voice${qs.toString() ? '?' + qs.toString() : ''}`;
 
   const ws = new WebSocket(url);
   ws.binaryType = 'arraybuffer';

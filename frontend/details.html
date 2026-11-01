@@ -5,7 +5,23 @@
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>案例详情 · 谈心小辅</title>
     <link rel="stylesheet" href="styles.css" />
+    <style>
+      .profile-initial {
+        display: grid;
+        place-items: center;
+        background: linear-gradient(160deg, #e9f7ef, #d6ecdf);
+        color: #1d5b3d;
+        font-size: 64px;
+        font-weight: 700;
+      }
+      .detail-error {
+        display: block;
+        margin-top: 10px;
+        color: var(--danger, #b3261e);
+      }
+    </style>
     <script src="shared.js" defer></script>
+    <script src="cases.js" defer></script>
   </head>
   <body data-page="selection">
     <a class="skip" href="#main">跳到主要内容</a>
@@ -14,7 +30,7 @@
       <a class="back-link" href="index.html"><span data-icon="back"></span>返回场景选择</a>
       <div class="page-heading coach-page-heading">
         <div>
-          <h1>先了解一下小陈</h1>
+          <h1>先了解一下<span data-case-name>这位学生</span></h1>
           <p>带着一个想了解的问题，开始这次谈话。</p>
         </div>
         <div class="coach-welcome">
@@ -23,31 +39,25 @@
             <img src="assets/xiaofu-counselor.png" alt="" width="164" height="188" />
           </div>
         </div>
-        <span class="badge">学业困难</span>
+        <span class="badge" data-case-badge>—</span>
       </div>
       <div class="detail-layout">
         <aside class="surface student-profile">
-          <img class="profile-photo" src="assets/xiaochen.png" alt="小陈" />
-          <h2>小陈</h2>
-          <p class="student-meta">大二 · 电气工程及其自动化</p>
-          <blockquote>“去了也听不懂，<br />反正都一样。”</blockquote>
-          <p class="profile-bottom">建议练习时长：5–8分钟</p>
+          <div data-profile-photo></div>
+          <h2 data-profile-name>—</h2>
+          <p class="student-meta" data-profile-meta></p>
+          <blockquote data-profile-quote></blockquote>
+          <p class="profile-bottom" data-profile-duration></p>
         </aside>
         <section class="surface detail-content" aria-label="案例背景和谈前准备">
           <section class="detail-section">
             <h2><span data-icon="file"></span>你目前知道的情况</h2>
-            <p>
-              近期多次缺课，课堂参与减少。面对老师的询问，小陈说最近不太想去上课，希望先了解他的近况。
-            </p>
+            <p data-case-background></p>
             <p class="muted">这些是已知线索。先听他自己的描述，不预设原因。</p>
           </section>
           <section class="detail-section">
             <h2><span data-icon="target"></span>这次重点练什么</h2>
-            <ol class="goal-list">
-              <li><span class="goal-number">1</span>了解具体的学习困难</li>
-              <li><span class="goal-number">2</span>回应学生的挫败感</li>
-              <li><span class="goal-number">3</span>一起商量一个可行的小步骤</li>
-            </ol>
+            <ol class="goal-list" data-case-goals></ol>
           </section>
           <section class="detail-section">
             <h2><span data-icon="pen"></span>谈前准备<span class="section-optional">可选</span></h2>
@@ -61,10 +71,12 @@
           </section>
           <div class="detail-actions">
             <small>准备好后，开始这次谈话。</small
-            ><a class="button" href="conversation.html"
-              ><span data-icon="mic"></span>进入谈话窗口<span data-icon="arrow"></span
-            ></a>
+            ><button class="button" data-start-session>
+              <span data-icon="mic"></span><span data-start-label>进入谈话窗口</span
+              ><span data-icon="arrow"></span>
+            </button>
           </div>
+          <small class="detail-error" data-session-notice hidden></small>
         </section>
       </div>
     </main>

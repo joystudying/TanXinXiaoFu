@@ -1,11 +1,18 @@
 # 谈心小辅 —— Caddy 反向代理（纯 HTTP，本机使用）
-# 两件事：1) 发静态页面；2) /ws/chat 与 /sessions 转发到 FastAPI（127.0.0.1:8000）。
+# 两件事：1) 发静态页面；2) /ws/*、/cases、/sessions 转发到 FastAPI（127.0.0.1:8000）。
 {
 	admin off
 }
 
 :5180 {
 	handle /ws/* {
+		reverse_proxy 127.0.0.1:8000
+	}
+
+	handle /cases {
+		reverse_proxy 127.0.0.1:8000
+	}
+	handle /cases/* {
 		reverse_proxy 127.0.0.1:8000
 	}
 

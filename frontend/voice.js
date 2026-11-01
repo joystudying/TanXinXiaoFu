@@ -8,7 +8,13 @@
   // WebSocket 走当前页面同源：Caddy 会把 /ws/chat 转发到 FastAPI；
   // 直接从 file:// 打开时回退到本机后端。
   const _host = location.host || '127.0.0.1:8000'
-  const WS_URL = `${location.protocol === 'https:' ? 'wss' : 'ws'}://${_host}/ws/chat`
+  const _params = new URLSearchParams(location.search)
+  const CASE_ID = _params.get('case') || ''
+  const _qs = new URLSearchParams()
+  if (CASE_ID) _qs.set('case_id', CASE_ID)
+  if (_params.get('session')) _qs.set('session_id', _params.get('session'))
+  const _q = _qs.toString()
+  const WS_URL = `${location.protocol === 'https:' ? 'wss' : 'ws'}://${_host}/ws/chat${_q ? '?' + _q : ''}`
 
   // ---------- 录音器：麦克风 -> PCM16 / 16kHz / 单声道（FunASR 所需规格） ----------
   const recorder = {
@@ -361,6 +367,7 @@
         },
         onError: (code, message) => notice(`${message || '实时语音出错'}（${code}）`),
         onSession: (id) => persistSession(id),
+        caseId: CASE_ID,
       })
     } catch (e) {
       endRealtime()

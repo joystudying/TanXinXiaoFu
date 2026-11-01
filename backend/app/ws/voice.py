@@ -31,6 +31,7 @@ import time
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
 from ..config import get_settings
+from ..core.cases import case_to_role
 from ..core.role import DEFAULT_ROLE, build_system_prompt
 from ..providers import build_asr
 from ..providers.realtime_volc import (
@@ -39,7 +40,7 @@ from ..providers.realtime_volc import (
     EVT_TEXT_DONE,
     RealtimeVolcSession,
 )
-from ..repo import save_turn
+from ..repo import case_to_dict, get_case, save_turn
 
 router = APIRouter()
 settings = get_settings()
@@ -71,7 +72,7 @@ def _frame_rms(data: bytes) -> float:
     return (total / n) ** 0.5
 
 
-def _session_config() -> dict:
+def _session_config(role=DEFAULT_ROLE) -> dict:
     # 情绪基调：低落、疲惫、不想多说，压住端到端模型默认偏积极的朗读腔
     mood = (
         "你的语气是低落、疲惫、没什么力气的。语速偏慢，句尾不要上扬，"
@@ -80,7 +81,7 @@ def _session_config() -> dict:
     )
     return {
         "model": settings.volc_model,
-        "instructions": build_system_prompt(DEFAULT_ROLE) + "\n\n【情绪与语气】" + mood,
+        "instructions": build_system_prompt(role) + "\n\n【情绪与语气】" + mood,
         "audio": {
             "input": {"format": {"type": "pcm", "rate": 16000}},
             "output": {
@@ -107,11 +108,18 @@ async def ws_voice(ws: WebSocket) -> None:
 
     asr = build_asr()  # funasr 未启用时为 None，老师侧回退火山自带转写
 
-    scenario = DEFAULT_ROLE.scenario
+    role = DEFAULT_ROLE
+    case_id = ws.query_params.get("case_id")
+    if case_id:
+        case = await get_case(case_id)
+        if case:
+            role = case_to_role(case_to_dict(case))
+    scenario = role.scenario
+
     session = RealtimeVolcSession()
     try:
         try:
-            info = await session.open(_session_config())
+            info = await session.open(_session_config(role))
         except Exception as exc:  # noqa: BLE001
             await ws.send_json({
                 "type": "error",

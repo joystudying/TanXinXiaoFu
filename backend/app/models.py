@@ -45,3 +45,46 @@ class Evaluation(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
+
+
+class Case(Base):
+    """案例库：6 类 × 3 例 = 18 个学生案例。
+
+    公开层（name / grade_major / tagline / public_background / goals / …）给前端；
+    私有层（hidden_background / speech_style / branches / opening）只在服务端进 system prompt。
+    """
+
+    __tablename__ = "cases"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    category: Mapped[str] = mapped_column(String(32), index=True, default="")
+    name: Mapped[str] = mapped_column(String(32), default="")
+    grade_major: Mapped[str] = mapped_column(String(64), default="")
+    tagline: Mapped[str] = mapped_column(String(128), default="")
+    quote: Mapped[str] = mapped_column(String(255), default="")
+    public_background: Mapped[str] = mapped_column(Text, default="")
+    goals: Mapped[list] = mapped_column(JSON, default=list)
+    training_focus: Mapped[str] = mapped_column(String(128), default="")
+    duration: Mapped[str] = mapped_column(String(32), default="")
+    avatar: Mapped[str] = mapped_column(String(128), default="")
+    # 私有层（仅服务端）
+    hidden_background: Mapped[str] = mapped_column(Text, default="")
+    speech_style: Mapped[str] = mapped_column(Text, default="")
+    branches: Mapped[list] = mapped_column(JSON, default=list)
+    opening: Mapped[str] = mapped_column(Text, default="")
+    version: Mapped[int] = mapped_column(Integer, default=1)
+
+
+class TrainingSession(Base):
+    """训练会话：谈前笔记 + 状态机地基（为后续「进行中 / 已结束 / 重练关联」预留）。"""
+
+    __tablename__ = "sessions"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    case_id: Mapped[str] = mapped_column(String(64), index=True, default="")
+    case_version: Mapped[int] = mapped_column(Integer, default=1)
+    prep_note: Mapped[str] = mapped_column(Text, default="")
+    status: Mapped[str] = mapped_column(String(16), default="created")  # created|active|ended
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )

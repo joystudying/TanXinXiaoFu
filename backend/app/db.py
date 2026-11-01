@@ -32,3 +32,9 @@ async def init_db() -> None:
                 await conn.execute(text(
                     "ALTER TABLE turns ADD COLUMN mode VARCHAR(16) NOT NULL DEFAULT 'pipeline'"
                 ))
+
+    # 案例库种子：cases 表为空时写入 18 条（公开 + 私有两层）
+    from .core.cases import SEED_CASES
+    from .repo import seed_cases_if_empty
+
+    await seed_cases_if_empty(SEED_CASES)

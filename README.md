@@ -7,7 +7,7 @@
 ![Python](https://img.shields.io/badge/Python-3.11-3776AB?logo=python&logoColor=white)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.115-009688?logo=fastapi&logoColor=white)
 ![WebSocket](https://img.shields.io/badge/WebSocket-duplex-4A5568)
-![DB](https://img.shields.io/badge/DB-SQLite-003B57?logo=sqlite&logoColor=white)
+![DB](https://img.shields.io/badge/DB-PostgreSQL-336791?logo=postgresql&logoColor=white)
 ![LLM](https://img.shields.io/badge/LLM-DeepSeek-2ea44f)
 
 </div>
@@ -18,6 +18,7 @@
 flowchart LR
     A[老师语音 / 文字] --> B[ASR<br/>FunASR]
     B --> C[学生角色 LLM<br/>DeepSeek]
+    DB[(cases 案例库)] -. 角色设定 / 隐藏事实 .-> C
     C --> D[TTS<br/>edge-tts]
     D --> E[学生语音]
     C -. 每轮转写 .-> F[(turns 表)]
@@ -29,6 +30,7 @@ flowchart LR
 
 | 能力 | 说明 |
 |------|------|
+| 🎭 案例库（18 例） | 6 类 × 3 例，公开层给前端、私有层仅服务端，存数据库 |
 | 🎙️ 实时语音全双工 | 火山豆包 Seeduplex，边说边听、插话即打断 |
 | ✍️ 老师侧转写与打断采集 | 本地 FunASR 旁听麦克风切句，插话也收录 |
 | 🗣️ 语音 / 文字双通道 | 回合制 `/ws/chat` + 真双工 `/ws/voice` |
@@ -43,10 +45,11 @@ backend/                   FastAPI 服务端（编排 + 可插拔 Provider + 持
   app/
     main.py                FastAPI 入口（CORS、挂载 REST 路由）
     config.py              读 .env 配置（pydantic-settings）
-    db.py / models.py      异步 SQLite；turns / evaluations 表
-    repo.py                转写、评价、会话列表的读写
+    db.py / models.py      异步 SQLAlchemy（SQLite / PostgreSQL 可切）；cases / turns / evaluations / sessions 表
+    repo.py                案例、转写、评价、会话的读写与播种
     core/
       role.py              学生角色/隐藏事实 → system prompt（仅服务端）
+      cases.py             案例库种子：6 类 × 3 例 = 18 条（公开/私有两层）
       orchestrator.py      对话编排
       evaluator.py         复盘评分要点 + 转写组装
     providers/             ASR / LLM / TTS / Evaluator 接口与实现（换厂商=改配置）
@@ -54,7 +57,8 @@ backend/                   FastAPI 服务端（编排 + 可插拔 Provider + 持
       evaluator_deepseek.py 督导 LLM（评价，角色与评价分离）
       asr_funasr.py / tts_edge.py / *_stub.py
     export.py              复盘报告导出（Word .docx）
-    routers/sessions.py    REST：训练记录 + 复盘 + 导出
+    routers/sessions.py    REST：谈前准备 + 训练记录 + 复盘 + 导出
+    routers/cases.py       REST：案例列表 / 详情（只暴露公开层）
     ws/chat.py             WebSocket 对话（文字/语音，回合制）
     ws/voice.py            WebSocket 实时语音（真双工，火山 Seeduplex）
   services/
@@ -62,15 +66,16 @@ backend/                   FastAPI 服务端（编排 + 可插拔 Provider + 持
   requirements.txt
   .env.example             配置模板（复制为 .env 填密钥）
 frontend/             原生 HTML 前端（无需构建）
-  index.html               首页 / 场景选择（静态）
-  conversation.html + voice.js   谈话训练（语音/文字，接后端）
-  js/audio-capture.js 等         实时通话底层（收音 + 播放 + 打断，接 /ws/voice）
-  records.html + records.js      训练记录列表（接 GET /sessions）
-  review.html + review.js        复盘报告（接 GET/POST /sessions/{id}/review）
-  details.html / import.html 等  案例详情 / 导入（UI 壳，待接 RAG）
-  shared.js / styles.css    公共布局与样式
+  index.html + cases.js         场景选择（案例库动态渲染，接 GET /cases）
+  conversation.html + voice.js  谈话训练（语音/文字，接后端）
+  js/audio-capture.js 等        实时通话底层（收音 + 播放 + 打断，接 /ws/voice）
+  records.html + records.js     训练记录列表（接 GET /sessions）
+  review.html + review.js       复盘报告（接 GET/POST /sessions/{id}/review）
+  details.html + cases.js       案例详情 + 谈前准备（接 GET /cases/{id} + POST /sessions）
+  import.html / import.js       导入案例（旧 UI，待接后端知识库）
+  shared.js / styles.css        公共布局与样式
 tools/
-  caddy/Caddyfile          静态页面 + /ws/chat、/sessions 反向代理（监听 5180）
+  caddy/Caddyfile          静态页面 + /ws/*、/cases、/sessions 反向代理（监听 5180）
 ```
 
 ## 🧩 技术栈（可插拔）
@@ -83,7 +88,7 @@ tools/
 | TTS（语音合成）| **edge-tts** | 微软 Edge 免费在线语音，输出 mp3，无需 GPU / 密钥 |
 | 实时语音（全双工）| **火山豆包实时语音 3.0（Seeduplex）** | 仅配置 VOLC 密钥后可用 |
 | 老师侧转写 / 打断 | 本地 FunASR + 本地 VAD | 旁听麦克风切句落库，与火山链路解耦 |
-| 数据库 | **SQLite**（SQLAlchemy 2.0 异步 + aiosqlite）| 表：`turns`（对话）、`evaluations`（复盘）；改 `DATABASE_URL` 可切 PostgreSQL |
+| 数据库 | **PostgreSQL**（SQLAlchemy 2.0 异步 + asyncpg）| 表：`cases`（案例）、`turns`（对话）、`evaluations`（复盘）、`sessions`（会话）；改 `DATABASE_URL` 可切回 SQLite |
 | 报告导出 | **python-docx**（Word）+ 浏览器打印（PDF）| Word 走 `/sessions/{id}/export.docx`，PDF 走前端打印 CSS |
 | Web 框架 | **FastAPI** + WebSocket | REST + 两条 WS：`/ws/chat`、`/ws/voice` |
 | 前端 | 原生 HTML / JS（无构建）| 不依赖 Vue / React |
@@ -109,6 +114,8 @@ pip install -r requirements.txt
 cp .env.example .env        # 编辑 .env：填 DEEPSEEK_API_KEY
                             # ASR_PROVIDER=stub 可先跑纯文字；=funasr 走本地识别
                             # 可选：填 VOLC_APP_ID + VOLC_API_KEY 解锁「实时通话」
+                            # 数据库默认 SQLite 开箱即用；要用 PostgreSQL 改成：
+                            #   DATABASE_URL=postgresql+asyncpg://user:pwd@host:5432/db
 
 uvicorn app.main:app --port 8000
 ```
@@ -172,6 +179,10 @@ FunASR 旁听同一路麦克风、按本地 VAD 切句转写落库；学生播�
 | 方法 | 路径 | 说明 |
 |------|------|------|
 | GET | `/health` | 健康检查 |
+| GET | `/cases` | 案例库列表（18 例，仅公开层）|
+| GET | `/cases/{id}` | 案例详情（仅公开层：背景 + 训练目标）|
+| POST | `/sessions` | 谈前准备：按案例建会话 + 保存准备笔记 |
+| GET | `/sessions/{id}/prep` | 读取某会话的准备笔记 |
 | GET | `/sessions` | 训练记录列表（时间/轮数/是否已复盘/得分）|
 | GET | `/sessions/{id}/review` | 读取已生成的复盘 |
 | POST | `/sessions/{id}/review` | 生成复盘（五维评分 + 证据 + 建议）|
@@ -181,7 +192,7 @@ FunASR 旁听同一路麦克风、按本地 VAD 切句转写落库；学生播�
 
 ## 🛡️ 关键设计（对应需求文档）
 
-- **服务端注入 / 私有角色设定**：学生「隐藏背景、表达特点、可控分支」在 `app/core/role.py` 组装成 system prompt，只在服务端，浏览器不可见。
+- **案例库公开 / 私有两层**：`app/core/cases.py` 定义 18 个案例；`GET /cases*` 只出公开层，私有层（隐藏背景、表达特点、分支、开场白）经 `case_to_role` 只在服务端进 system prompt，浏览器不可见。
 - **角色与评价分离**：扮学生的 LLM 与打分的督导 LLM 是两个独立 Provider，可分别换模型；评价走独立 system prompt。
 - **转写与评价持久化**：每轮对话写 `turns` 表（`mode` 区分 pipeline/realtime），复盘写 `evaluations` 表（session 唯一），供回听与证据评价。
 - **实时老师侧转写与火山解耦**：火山 Seeduplex 双工下不吐可靠老师文字，改为本地 FunASR 旁听麦克风 + 本地 VAD 切句落库；火山链路完全不变、零影响，仅在未配 FunASR 时回退火山自带转写。
@@ -190,8 +201,8 @@ FunASR 旁听同一路麦克风、按本地 VAD 切句转写落库；学生播�
 
 ## 🗺️ 后续路线
 
-1. 场景选择 + 谈前准备 + 可控分支（当前角色/场景服务端硬编码为「小悦 / 情绪困扰」）
-2. 回合制 VAD / 打断（实时模式已内置本地 VAD + 打断采集）
-3. 真实案例库（RAG 检索）：导入页已有 UI，缺后端检索与知识库
-4. TTS 升级 IndexTTS2（GPU，接 8 维情绪向量）
-5. 危机专项（风险识别与转介）
+1. 案例私有层定稿审核（尤其「危机识别与联动」3 例，初稿需专业人员复核）
+2. 准备笔记纳入复盘报告（PRD 9.3：教师可选择是否纳入）
+3. 案例库扩展 / RAG 检索（当前 18 例为内置种子，导入页 UI 待接后端知识库）
+4. 回合制 VAD / 打断（实时模式已内置本地 VAD + 打断采集）
+5. TTS 升级 IndexTTS2（GPU，接 8 维情绪向量）

@@ -353,6 +353,15 @@
       }
       const data = await res.json()
       renderReport(data)
+      // 让「再练一次」回到同一个学生（会话可能没有谈前记录，失败则静默忽略）
+      try {
+        const prepRes = await fetch(API_BASE + '/sessions/' + encodeURIComponent(sessionId) + '/prep')
+        const prep = prepRes.ok ? await prepRes.json() : null
+        if (prep && prep.case_id) {
+          const again = root.querySelector('a[href^="conversation.html"]')
+          if (again) again.href = 'conversation.html?case=' + encodeURIComponent(prep.case_id)
+        }
+      } catch (_) {}
     } catch (err) {
       setMessage('请求后端失败：' + escapeHtml(err && err.message ? err.message : err))
     }

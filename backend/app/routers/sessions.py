@@ -1,4 +1,5 @@
 """复盘评价 REST 端点：对一次会话的转写做五维评分 + 证据复盘。"""
+import uuid
 from datetime import datetime
 from io import BytesIO
 
@@ -9,7 +10,15 @@ from pydantic import BaseModel
 from ..core.evaluator import build_rubric_text, turns_to_transcript
 from ..export import build_review_docx
 from ..providers import build_evaluator
-from ..repo import get_evaluation, list_sessions, list_turns, save_evaluation
+from ..repo import (
+    create_session,
+    get_case,
+    get_evaluation,
+    get_session,
+    list_sessions,
+    list_turns,
+    save_evaluation,
+)
 
 router = APIRouter(prefix="/sessions", tags=["sessions"])
 
@@ -35,9 +44,34 @@ class SessionSummary(BaseModel):
     reviewed: bool = False
 
 
+class CreateSessionRequest(BaseModel):
+    case_id: str
+    prep_note: str = ""
+
+
 @router.get("", response_model=list[SessionSummary])
 async def sessions_list() -> list[SessionSummary]:
     return [SessionSummary(**s) for s in await list_sessions()]
+
+
+@router.post("")
+async def create_session_endpoint(req: CreateSessionRequest) -> dict:
+    """谈前准备：按案例建一个训练会话，保存准备笔记快照，返回 session_id。"""
+    case = await get_case(req.case_id)
+    if case is None:
+        raise HTTPException(404, "案例不存在")
+    session_id = uuid.uuid4().hex
+    await create_session(session_id, req.case_id, req.prep_note, case.version)
+    return {"session_id": session_id, "case_id": req.case_id}
+
+
+@router.get("/{session_id}/prep")
+async def get_prep(session_id: str) -> dict:
+    """读取某个会话的谈前准备笔记（供复盘页 / 报告引用）。"""
+    s = await get_session(session_id)
+    if s is None:
+        raise HTTPException(404, "会话不存在")
+    return {"session_id": s.id, "case_id": s.case_id, "prep_note": s.prep_note}
 
 
 @router.get("/{session_id}/review", response_model=ReviewResponse)

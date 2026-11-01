@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from .config import get_settings
 from .db import init_db
+from .routers.cases import router as cases_router
 from .routers.sessions import router as sessions_router
 from .ws.chat import router as chat_router
 from .ws.voice import router as voice_router
@@ -27,6 +28,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(cases_router)
 app.include_router(chat_router)
 app.include_router(voice_router)
 app.include_router(sessions_router)
