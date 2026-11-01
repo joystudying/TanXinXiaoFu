@@ -99,6 +99,43 @@ git push collab integrate
 
 ---
 
+## 别人下载后要自己准备什么
+
+仓库里**没有任何密钥**（`.env` 不进版本库），所以从 GitHub 克隆下来后，得自己申请。
+
+| 能力 | 要自己申请吗 | 没有会怎样 |
+|---|---|---|
+| 文字对练（核心功能） | **要**：DeepSeek API Key | 启动自检不通过，服务直接退出并提示缺什么 |
+| 实时语音（真双工） | **要**：火山引擎 AppID + Access Token | 服务能正常启动，但「实时通话」按钮是灰的 |
+| 语音朗读（按轮模式） | 不要，edge-tts 免费免密钥 | — |
+| 本地离线识别（可选） | 不要，但要装 FunASR + 约 1 GB 模型 | 识别退回浏览器自带能力 |
+
+### 怎么申请
+
+**DeepSeek**：<https://platform.deepseek.com> → API Keys → 新建。按 token 计费，很便宜。
+
+**火山引擎实时语音**：
+1. <https://console.volcengine.com/speech/app> 注册并**实名认证**（不认证不能开通）
+2. 创建应用 → 勾选「豆包端到端实时语音大模型」
+3. 进入应用的服务详情，页面最下方「服务接口认证信息」里拿 **APP ID** 和 **Access Token**
+4. 试用额度：开通时通常赠送（我们拿到 100 万 tokens，有效期到 2027-05-01），正式按音频时长计费
+
+### 填在哪
+
+```powershell
+copy .env.example .env
+```
+
+然后按 `.env.example` 里的注释填四项：
+
+```
+DEEPSEEK_API_KEY=...      # 文字对练必需
+VOLC_APP_ID=...           # 实时语音必需
+VOLC_ACCESS_TOKEN=...     # 实时语音必需
+VOLC_RESOURCE_ID=volc.speech.dialog   # 固定值，不用改
+```
+
+只填 DeepSeek 也能跑：文字对练、按轮语音（浏览器识别 + edge-tts 朗读）都能用，只是没有真双工。
 ## 配置项
 
 全部在 `.env`（不进仓库），模板见 [`.env.example`](.env.example)。
