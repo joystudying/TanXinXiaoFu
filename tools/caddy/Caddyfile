@@ -17,7 +17,7 @@
 	}
 
 	handle {
-		root * C:/Users/13008/Desktop/AI语音对话/frontend-html
+		root * C:/Users/13008/Desktop/AI语音对话/frontend
 		file_server
 	}
 }

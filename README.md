@@ -33,7 +33,7 @@ backend/                   FastAPI 服务端（编排 + 可插拔 Provider + 持
     funasr_server.py       独立 FunASR 识别服务（自部署）
   requirements.txt
   .env.example             配置模板（复制为 .env 填密钥）
-frontend-html/             原生 HTML 前端（无需构建）
+frontend/             原生 HTML 前端（无需构建）
   index.html               首页 / 场景选择（静态）
   conversation.html + voice.js   谈话训练（语音/文字，接后端）
   records.html + records.js      训练记录列表（接 GET /sessions）
@@ -93,7 +93,7 @@ python services/funasr_server.py     # 首次自动下载 paraformer-zh 模型�
 
 文字对练开箱即用；语音输入需先启动 FunASR（第 2 步）。
 
-- **本机测试**：双击 `frontend-html/index.html`（`voice.js` 会自动连本机后端 `ws://127.0.0.1:8000`）。
+- **本机测试**：双击 `frontend/index.html`（`voice.js` 会自动连本机后端 `ws://127.0.0.1:8000`）。
 - **或用 Caddy**（静态页 + 反代，更接近真实部署）：
 
 ```bash
