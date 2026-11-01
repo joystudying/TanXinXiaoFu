@@ -49,6 +49,18 @@ export async function startRealtime({
   let stopped = false;
   let muted = false;              // 播放期间上行静音，防止回声被模型当成插话
   let gateOpen = true;            // 按住说话模式下，只有按着才为 true
+  // 流式结果会一个字一个字地来，必须攒成一句再交给界面，
+  // 否则每来一个增量就往对话框塞一条，轮次会一路涨到上百。
+  let asrBuf = '';
+  let chatBuf = '';
+
+  function mergeText(prev, next) {
+    if (!next) return prev;
+    if (!prev) return next;
+    if (next.startsWith(prev)) return next;      // 累积式下发
+    if (prev.startsWith(next)) return prev;      // 重复下发
+    return prev + next;                          // 增量式下发
+  }
   let playingSince = 0;
   let hotFrames = 0;
 
@@ -144,14 +156,19 @@ export async function startRealtime({
     }
     if (msg.type === 'event') {
       const p = msg.payload || {};
-      if (msg.event === 451) {                     // 老师这句的识别结果
+      if (msg.event === 451) {                     // 老师这句的识别增量
         const t = p.text || (p.extra && p.extra.origin_text);
-        if (t) onTeacherText?.(t);
-      } else if (msg.event === 550) {              // 学生的话
-        const t = p.text || p.content;
-        if (t) onStudentText?.(t);
-      } else if (msg.event === 459) {              // 老师说完
+        if (t) asrBuf = mergeText(asrBuf, t);
+      } else if (msg.event === 459) {              // 老师说完 → 出一整句
+        if (asrBuf.trim()) onTeacherText?.(asrBuf.trim());
+        asrBuf = '';
         onStatus?.('listening', '听着，你继续说');
+      } else if (msg.event === 550) {              // 学生的回答增量
+        const t = p.text || p.content;
+        if (t) chatBuf = mergeText(chatBuf, t);
+      } else if (msg.event === 559) {              // 学生说完 → 出一整句
+        if (chatBuf.trim()) onStudentText?.(chatBuf.trim());
+        chatBuf = '';
       }
     }
   };

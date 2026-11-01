@@ -402,11 +402,19 @@ function bind() {
           else setState(State.IDLE, text);
         },
         onTeacherText: (text) => {
-          appendMessage('teacher', text, Math.ceil((document.querySelectorAll('.message').length + 1) / 2));
+          const t = (text || '').trim();
+          if (!t) return;
+          const roundNo = document.querySelectorAll('.message.teacher').length + 1;
+          appendMessage('teacher', t, roundNo);
+          if (ui.round) ui.round.textContent = `第 ${roundNo} 轮`;
         },
         onStudentText: (text) => {
-          appendMessage('student', text, Math.ceil((document.querySelectorAll('.message').length) / 2));
-          showQuote(text);
+          const t = (text || '').trim();
+          if (!t) return;
+          const roundNo = Math.max(1, document.querySelectorAll('.message.teacher').length);
+          appendMessage('student', t, roundNo);
+          if (ui.round) ui.round.textContent = `第 ${roundNo} 轮`;
+          showQuote(t);
         },
         onError: (code, message) => notice(`${message || '实时语音出错'}（${code}）`),
       });
