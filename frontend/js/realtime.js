@@ -48,11 +48,12 @@ export async function startRealtime({
   let capture = null;
   let stopped = false;
   let muted = false;              // 播放期间上行静音，防止回声被模型当成插话
+  let gateOpen = true;            // 按住说话模式下，只有按着才为 true
   let playingSince = 0;
   let hotFrames = 0;
 
   // 诊断计数：出问题时能一眼看出是被本地掐了还是没收到
-  const stats = { chunks: 0, bytes: 0, flushed: 0, flushesByBarge: 0 };
+  const stats = { chunks: 0, bytes: 0, flushed: 0, flushesByBarge: 0, mutes: 0, sent: 0 };
   window.__rt = stats;
 
   function setMuted(next) {
@@ -60,6 +61,7 @@ export async function startRealtime({
     muted = next;
     if (ws.readyState === WebSocket.OPEN) {
       ws.send(JSON.stringify({ type: next ? 'mute' : 'unmute' }));
+      stats.mutes += 1;
     }
   }
 
@@ -99,7 +101,10 @@ export async function startRealtime({
     if (sources.size === 1) playingSince = performance.now();
     src.onended = () => {
       sources.delete(src);
-      if (sources.size === 0) setMuted(false);   // 播完放开麦克风
+      if (sources.size === 0) {
+        // 尾音也会被麦克风收进去，延迟一点再放开
+        setTimeout(() => { if (sources.size === 0) setMuted(false); }, 250);
+      }
     };
     setMuted(true);                               // 播放期间静音，防回声
     onStatus?.('speaking', '学生在说…');
@@ -173,8 +178,11 @@ export async function startRealtime({
       frameMs: 20,                       // 端到端模型要求 20ms 一帧
       targetRate: 16000,
       onFrame: (_i16, buf) => {
-        if (muted) return;                 // 播放期间不上传，避免回声
-        if (ws.readyState === WebSocket.OPEN) ws.send(buf);
+        if (muted || !gateOpen) return;    // 播放期间静音 / 没按住就不发
+        if (ws.readyState === WebSocket.OPEN) {
+          ws.send(buf);
+          stats.sent += 1;
+        }
       },
       onLevel: (level) => {
         if (sources.size === 0) { hotFrames = 0; return; }
@@ -217,6 +225,13 @@ export async function startRealtime({
   }
 
   return {
+    /** 按住说话：true=正在按住（允许上传），false=松开（停止上传） */
+    setTransmitting(on) {
+      gateOpen = Boolean(on);
+      if (!on) setMuted(true);
+      else setMuted(false);
+    },
+    stats,
     stop() {
       stopped = true;
       try {

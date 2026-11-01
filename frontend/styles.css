@@ -3487,3 +3487,11 @@ h2 {
   color: #fff;
 }
 #btnRealtime[aria-pressed='true'] .force-icon { color: #fff; }
+
+/* 按住说话的按下态 */
+#btnTalk[aria-pressed='true'] {
+  background: #b93f3f;
+  border-color: #b93f3f;
+  color: #fff;
+}
+#btnTalk:disabled { opacity: .45; }

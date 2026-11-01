@@ -30,6 +30,7 @@ const ui = {
   micHint: $('[data-mic-hint]'),
   rt: $('#btnRealtime'),
   rtLabel: $('[data-rt-label]'),
+  talk: $('#btnTalk'),
   manual: $('#manualText'),
   send: $('#btnSend'),
   end: $('#btnEnd'),
@@ -356,12 +357,32 @@ function bind() {
 
   ui.end?.addEventListener('click', endSession);
 
+  // 按住说话：按下才把麦克风声音发给模型，松开就停。外放环境必须用这个。
+  if (ui.talk) {
+    const press = (on) => {
+      ui.talk.setAttribute('aria-pressed', String(on));
+      rtSession?.setTransmitting?.(on);
+      setState(on ? State.LISTENING : State.IDLE, on ? '正在说…' : '松开即停');
+    };
+    ui.talk.addEventListener('pointerdown', (e) => { e.preventDefault(); press(true); });
+    ui.talk.addEventListener('pointerup', (e) => { e.preventDefault(); press(false); });
+    ui.talk.addEventListener('pointerleave', () => press(false));
+    ui.talk.addEventListener('pointercancel', () => press(false));
+    window.addEventListener('keydown', (e) => {
+      if (e.code === 'Space' && rtSession && !e.repeat) { e.preventDefault(); press(true); }
+    });
+    window.addEventListener('keyup', (e) => {
+      if (e.code === 'Space' && rtSession) { e.preventDefault(); press(false); }
+    });
+  }
+
   ui.rt?.addEventListener('click', async () => {
     if (rtSession) {                       // 正在通话 → 结束
       rtSession.stop();
       rtSession = null;
       ui.rt.setAttribute('aria-pressed', 'false');
       if (ui.rtLabel) ui.rtLabel.textContent = '实时通话';
+      if (ui.talk) { ui.talk.hidden = true; ui.talk.disabled = true; ui.talk.setAttribute('aria-pressed', 'false'); }
       setState(State.IDLE, '实时通话已结束');
       return;
     }
@@ -389,6 +410,11 @@ function bind() {
         },
         onError: (code, message) => notice(`${message || '实时语音出错'}（${code}）`),
       });
+      // 启用「按住说话」：外放时用它彻底避免回声
+      if (ui.talk) {
+        ui.talk.hidden = false;
+        ui.talk.disabled = false;
+      }
     } catch (e) {
       rtSession = null;
       ui.rt.setAttribute('aria-pressed', 'false');
