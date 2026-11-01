@@ -12,7 +12,11 @@
 import { createAudioCapture } from './audio-capture.js';
 
 const GAIN = 3.0;              // ≈ +9.5 dB，把 −39 dBFS 抬到可用音量
-const SPEECH_LEVEL = 0.03;     // 本地判断"用户开口"的能量阈值
+// 打断判定要迟钝一点：喇叭的声音会串进麦克风，阈值太低会把学生自己的话掐断。
+// 实测正常说话 RMS 约 0.05~0.30，房间噪声 0.005~0.03。
+const INTERRUPT_LEVEL = 0.12;  // 连续超过这个能量才算"老师真的开口"
+const INTERRUPT_FRAMES = 4;    // 约 80ms，避免咳嗽、键盘声误触
+const GUARD_MS = 400;          // 开始播放后这段时间内不判打断（躲开起播的爆音）
 
 export function realtimeSupported() {
   return Boolean(
@@ -43,6 +47,21 @@ export async function startRealtime({
   const sources = new Set();
   let capture = null;
   let stopped = false;
+  let muted = false;              // 播放期间上行静音，防止回声被模型当成插话
+  let playingSince = 0;
+  let hotFrames = 0;
+
+  // 诊断计数：出问题时能一眼看出是被本地掐了还是没收到
+  const stats = { chunks: 0, bytes: 0, flushed: 0, flushesByBarge: 0 };
+  window.__rt = stats;
+
+  function setMuted(next) {
+    if (muted === next) return;
+    muted = next;
+    if (ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({ type: next ? 'mute' : 'unmute' }));
+    }
+  }
 
   function ensurePlayCtx() {
     if (!playCtx) {
@@ -56,6 +75,8 @@ export async function startRealtime({
   function enqueueAudio(buffer) {
     const samples = new Float32Array(buffer);
     if (!samples.length) return;
+    stats.chunks += 1;
+    stats.bytes += buffer.byteLength;
     const ctx = ensurePlayCtx();
     if (ctx.state === 'suspended') ctx.resume();
 
@@ -75,12 +96,18 @@ export async function startRealtime({
     nextTime = startAt + audioBuf.duration;
 
     sources.add(src);
-    src.onended = () => sources.delete(src);
+    if (sources.size === 1) playingSince = performance.now();
+    src.onended = () => {
+      sources.delete(src);
+      if (sources.size === 0) setMuted(false);   // 播完放开麦克风
+    };
+    setMuted(true);                               // 播放期间静音，防回声
     onStatus?.('speaking', '学生在说…');
   }
 
   /** 打断播放（用户开口时本地立刻静音，不等服务端） */
   function flushPlayback() {
+    stats.flushed += 1;
     for (const s of sources) {
       try { s.stop(); } catch (e) { /* 忽略 */ }
     }
@@ -146,13 +173,23 @@ export async function startRealtime({
       frameMs: 20,                       // 端到端模型要求 20ms 一帧
       targetRate: 16000,
       onFrame: (_i16, buf) => {
+        if (muted) return;                 // 播放期间不上传，避免回声
         if (ws.readyState === WebSocket.OPEN) ws.send(buf);
       },
       onLevel: (level) => {
-        // 用户一开口就把本地播放掐掉，不等服务端判断
-        if (level > SPEECH_LEVEL && sources.size > 0) {
-          flushPlayback();
-          onStatus?.('listening', '你打断了他');
+        if (sources.size === 0) { hotFrames = 0; return; }
+        if (performance.now() - playingSince < GUARD_MS) return;   // 起播保护
+
+        if (level > INTERRUPT_LEVEL) {
+          hotFrames += 1;
+          if (hotFrames >= INTERRUPT_FRAMES) {
+            stats.flushesByBarge += 1;
+            flushPlayback();
+            setMuted(false);
+            onStatus?.('listening', '你打断了他');
+          }
+        } else {
+          hotFrames = 0;
         }
       },
       onError: (code) => {
