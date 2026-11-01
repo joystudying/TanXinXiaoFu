@@ -29,13 +29,19 @@ class Settings(BaseSettings):
     tts_rate: str = "+0%"
     tts_pitch: str = "+0Hz"
 
+    # Evaluator（评价大模型，与扮学生的 LLM 分离）
+    evaluator_provider: str = "deepseek"
+    evaluator_model: str = "deepseek-chat"  # 可换 deepseek-reasoner（推理更强、更慢）
+
     # 存储
     database_url: str = "sqlite+aiosqlite:///./data/app.db"
 
     # 服务
     host: str = "127.0.0.1"
     port: int = 8000
-    cors_origins: str = "http://localhost:5173"
+    # 本地开发：前端可能以 file:// 或任意本机端口打开，统一放开跨域；
+    # 后端只监听 127.0.0.1，不暴露公网，放开 * 没有额外风险。
+    cors_origins: str = "*"
 
 
 @lru_cache

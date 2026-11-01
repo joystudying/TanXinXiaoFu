@@ -73,6 +73,9 @@ async def ws_chat(ws: WebSocket) -> None:
                 audio = base64.b64decode(msg.get("audio_b64", ""))
                 fmt = msg.get("audio_format", "pcm16")
                 out = await orchestrator.handle_turn(state, audio=audio, audio_format=fmt)
+                teacher_text = out.get("input_text", "")
+                if teacher_text.strip():
+                    await save_turn(session_id, state.role.scenario, "teacher", teacher_text)
 
             elif mtype == "reset":
                 session_id = uuid.uuid4().hex

@@ -12,10 +12,10 @@ backend/data/
 node_modules/
 frontend/dist/
 
+# 日志
+*.log
+
 # 系统
 .DS_Store
 Thumbs.db
 .vscode/
-
-# 部署工具（二进制不进库）
-tools/cloudflared/

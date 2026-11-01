@@ -5,7 +5,7 @@
   'use strict'
   if (document.body.dataset.page !== 'conversation') return
 
-  // WebSocket 走当前页面同源：Cloudflare / Caddy 都会把 /ws/chat 转发到 FastAPI；
+  // WebSocket 走当前页面同源：Caddy 会把 /ws/chat 转发到 FastAPI；
   // 直接从 file:// 打开时回退到本机后端。
   const _host = location.host || '127.0.0.1:8000'
   const WS_URL = `${location.protocol === 'https:' ? 'wss' : 'ws'}://${_host}/ws/chat`
@@ -140,6 +140,7 @@
     busy: false,
     recording: false,
     studentName: '小陈',
+    sessionId: null,
     lastStudentAudio: null,
     lastTeacherPcm: null,
     turn: 0,
@@ -181,6 +182,16 @@
     if (els.notice) els.notice.hidden = true
   }
 
+  function persistSession(id) {
+    if (!id) return
+    state.sessionId = id
+    try {
+      localStorage.setItem('xxt_last_session', id)
+    } catch (_) {}
+    const link = document.querySelector('a[href^="review.html"]')
+    if (link) link.href = 'review.html?session=' + encodeURIComponent(id)
+  }
+
   // ---------- WebSocket ----------
   function connect() {
     const ws = new WebSocket(WS_URL)
@@ -198,12 +209,14 @@
         return
       }
       if (data.type === 'ready') {
+        persistSession(data.session_id)
         state.studentName = data.student_name || state.studentName
         if (els.title) els.title.textContent = `和${state.studentName}聊聊`
         if (els.transcript) els.transcript.innerHTML = ''
         if (els.response) els.response.textContent = '“……”'
         setStatus('已连接 · 等待你的回应')
       } else if (data.type === 'reset') {
+        persistSession(data.session_id)
         state.turn = 0
         if (els.transcript) els.transcript.innerHTML = ''
         if (els.round) els.round.textContent = '第0轮'

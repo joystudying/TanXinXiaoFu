@@ -22,8 +22,7 @@ backend/               FastAPI 服务端（编排 + 可插拔 Provider + 转写�
 谈心小辅-HTML界面/      原生 HTML 前端（6 页：场景选择→案例详情→谈话→复盘→训练记录）
   voice.js             语音对接：WebSocket + 录音 + 播放（把界面接到后端）
 tools/                 部署辅助
-  caddy/Caddyfile      静态页面 + /ws/chat 反向代理（监听 5180）
-  cloudflared/         Cloudflare 隧道（手机/公网测试用）
+  caddy/Caddyfile      静态页面 + /ws/chat、/sessions 反向代理（监听 5180）
 ```
 
 ## 技术栈（可插拔）
@@ -80,15 +79,6 @@ python services/funasr_server.py     # 首次自动下载 paraformer-zh 模型�
 caddy run --config tools/caddy/Caddyfile
 # 打开 http://localhost:5180/conversation.html
 ```
-
-- **手机 / 其他设备测试**（浏览器要求 HTTPS 才能用麦克风）：
-
-```bash
-cloudflared tunnel --url http://localhost:5180
-# 输出一个 https://xxx.trycloudflare.com 地址，手机直接打开即可（证书正规，无需手动信任）
-```
-
-> ⚠️ Cloudflare 快速隧道是**公网链接**，仅用于开发测试，不要在里边聊真实敏感信息；正式部署请用自己域名 + 访问控制。
 
 ## WebSocket 协议
 

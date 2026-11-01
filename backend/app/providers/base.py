@@ -36,3 +36,17 @@ class TTSProvider(ABC):
     @abstractmethod
     async def synthesize(self, text: str, **kwargs) -> TTSResult:
         """文字 -> 语音。"""
+
+
+@dataclass
+class EvaluationResult:
+    total_score: int
+    dimensions: list[dict]  # [{name, score, comment, evidence:[...]}, ...]
+    summary: str
+    suggestions: str
+
+
+class EvaluatorProvider(ABC):
+    @abstractmethod
+    async def evaluate(self, transcript: str, rubric: str, **kwargs) -> EvaluationResult:
+        """对话转写 + 评分要点 -> 结构化复盘评价。"""

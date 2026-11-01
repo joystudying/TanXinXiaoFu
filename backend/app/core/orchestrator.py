@@ -39,7 +39,11 @@ class Orchestrator:
         audio: bytes | None = None,
         audio_format: str = "pcm16",
     ) -> dict:
-        """处理一轮，返回 {text, emotion, audio_b64, audio_format, note}。"""
+        """处理一轮，返回 {input_text, text, emotion, audio_b64, audio_format, note}。
+
+        input_text 是老师这一侧的文字（文字模式即入参，语音模式即 ASR 转写结果），
+        供上层落库复盘；text 仍是学生的回复。
+        """
         if text is None and audio is not None:
             text = await self.asr.transcribe(audio, audio_format)
             if not text.strip():
@@ -68,6 +72,7 @@ class Orchestrator:
 
         tts = await self.tts.synthesize(reply) if reply else None
         return {
+            "input_text": text,
             "text": reply,
             "emotion": result.emotion,
             "audio_b64": base64.b64encode(tts.audio).decode() if tts and tts.audio else None,

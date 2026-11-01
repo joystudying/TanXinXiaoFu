@@ -4,7 +4,7 @@
 """
 from datetime import datetime
 
-from sqlalchemy import DateTime, Integer, String, Text, func
+from sqlalchemy import JSON, DateTime, Integer, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from .db import Base
@@ -19,6 +19,28 @@ class Turn(Base):
     role: Mapped[str] = mapped_column(String(16), default="user")  # teacher | student
     text: Mapped[str] = mapped_column(Text, default="")
     emotion: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+
+
+class Evaluation(Base):
+    """复盘评价结果：一次会话的五维评分 + 证据 + 建议。
+
+    「角色与评价分离」——评价结果独立存储，与对话转写分开。
+    dimensions 形如 [{name, score, comment, evidence:[...]}, ...]，共五维。
+    """
+
+    __tablename__ = "evaluations"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    session_id: Mapped[str] = mapped_column(String(64), index=True, unique=True)
+    scenario: Mapped[str] = mapped_column(String(64), default="")
+    total_score: Mapped[int] = mapped_column(Integer, default=0)
+    dimensions: Mapped[list] = mapped_column(JSON, default=list)
+    summary: Mapped[str] = mapped_column(Text, default="")
+    suggestions: Mapped[str] = mapped_column(Text, default="")
+    status: Mapped[str] = mapped_column(String(16), default="done")  # done | error
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )

@@ -1,8 +1,9 @@
-"""Provider 工厂：根据配置装配 ASR / LLM / TTS 实现。"""
+"""Provider 工厂：根据配置装配 ASR / LLM / TTS / Evaluator 实现。"""
 from ..config import get_settings
 from .asr_funasr import FunASRProvider
 from .asr_stub import StubASRProvider
-from .base import ASRProvider, LLMProvider, TTSProvider
+from .base import ASRProvider, EvaluatorProvider, LLMProvider, TTSProvider
+from .evaluator_deepseek import EvaluatorDeepSeek
 from .llm_deepseek import DeepSeekProvider
 from .tts_edge import EdgeTTSProvider
 from .tts_stub import StubTTSProvider
@@ -31,3 +32,15 @@ def build_providers() -> tuple[LLMProvider, ASRProvider, TTSProvider]:
         tts = StubTTSProvider()
 
     return llm, asr, tts
+
+
+def build_evaluator() -> EvaluatorProvider:
+    s = get_settings()
+
+    if s.evaluator_provider == "deepseek":
+        if not s.deepseek_api_key:
+            raise RuntimeError("缺少 DEEPSEEK_API_KEY，无法构建评价模型")
+        return EvaluatorDeepSeek(
+            s.deepseek_api_key, s.deepseek_base_url, s.evaluator_model
+        )
+    raise RuntimeError(f"未知 EVALUATOR_PROVIDER: {s.evaluator_provider}")
