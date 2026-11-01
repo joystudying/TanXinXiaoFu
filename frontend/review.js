@@ -240,7 +240,7 @@
     root.innerHTML =
       '<div class="report-pages">' +
       '<article class="report-sheet" aria-label="第1页：评价总览">' +
-      '<header class="sheet-heading"><h2>谈话训练评价报告</h2><span class="sheet-page">01 / 02</span></header>' +
+      '<header class="sheet-heading"><h2>谈话训练评价报告</h2><span class="sheet-page">01 / 03</span></header>' +
       '<dl class="report-facts">' +
       facts
         .map(
@@ -258,7 +258,7 @@
         ? '<dl class="verdict-findings">' +
           '<div><dt>值得保留</dt><dd>「' + escapeHtml(top.name) + '」得分最高（' + Number(top.score) + ' 分）。</dd></div>' +
           '<div><dt>优先调整</dt><dd>「' + escapeHtml(low.name) + '」相对薄弱（' + Number(low.score) + ' 分），是下轮重点。</dd></div>' +
-          '<div><dt>下一步</dt><dd>可执行建议见第 2 页「下一轮练习计划」。</dd></div>' +
+          '<div><dt>下一步</dt><dd>可执行建议见第 3 页「下一轮练习计划」。</dd></div>' +
           '</dl>'
         : '') +
       '</section>' +
@@ -281,11 +281,11 @@
       '<li><strong>语言表达</strong>表达流畅、条理清晰，有感染力和说服力。</li>' +
       '</ul>' +
       '</div></div></section>' +
-      '<footer class="sheet-footer"><span>评价依据：本次对话转写</span><span>第1页 / 共2页</span></footer>' +
+      '<footer class="sheet-footer"><span>评价依据：本次对话转写</span><span>第1页 / 共3页</span></footer>' +
       '</article>' +
 
-      '<article class="report-sheet" aria-label="第2页：对话分析与改进">' +
-      '<header class="sheet-heading"><h2>对话分析与改进计划</h2><span class="sheet-page">02 / 02</span></header>' +
+      '<article class="report-sheet" aria-label="第2页：对话记录与分析">' +
+      '<header class="sheet-heading"><h2>对话记录与分析</h2><span class="sheet-page">02 / 03</span></header>' +
       '<section id="review-transcript" class="report-section">' +
       '<h2 class="report-section-title"><span aria-hidden="true">三</span>完整对话记录</h2>' +
       '<p class="report-note">本次对话转写（按发言顺序），供对照下方点评定位原话。</p>' +
@@ -295,6 +295,11 @@
       '<h2 class="report-section-title"><span aria-hidden="true">四</span>五维点评与证据</h2>' +
       evidenceBlocks +
       '</section>' +
+      '<footer class="sheet-footer"><span>本报告用于训练复盘，不代替专业判断</span><span>第2页 / 共3页</span></footer>' +
+      '</article>' +
+
+      '<article class="report-sheet" aria-label="第3页：下一轮练习计划">' +
+      '<header class="sheet-heading"><h2>下一轮练习计划</h2><span class="sheet-page">03 / 03</span></header>' +
       '<section id="review-next" class="report-section">' +
       '<div class="practice-heading">' +
       '<h2 class="report-section-title"><span aria-hidden="true">五</span>下一轮练习计划</h2>' +
@@ -304,12 +309,12 @@
         ? '<ol class="practice-sequence">' + practiceItems + '</ol>'
         : '<p class="report-note">暂无明确建议。</p>') +
       '</section>' +
-      '<footer class="sheet-footer"><span>本报告用于训练复盘，不代替专业判断</span><span>第2页 / 共2页</span></footer>' +
+      '<footer class="sheet-footer"><span>本报告用于训练复盘，不代替专业判断</span><span>第3页 / 共3页</span></footer>' +
       '</article>' +
       '</div>' +
       '<nav class="report-pagination" aria-label="报告分页">' +
         '<button type="button" class="button outline" data-page-prev disabled>上一页</button>' +
-        '<span class="page-indicator" data-page-indicator>第 1 / 2 页</span>' +
+        '<span class="page-indicator" data-page-indicator>第 1 / 3 页</span>' +
         '<button type="button" class="button" data-page-next>下一页</button>' +
       '</nav>'
 
@@ -353,5 +358,28 @@
     }
   }
 
+  // 导出：PDF 走浏览器打印（打印 CSS 已把三页展开分页）；Word 走后端生成 .docx。
+  function setupExport() {
+    const notice = document.querySelector('[data-preview-notice]')
+    const pdfBtn = document.querySelector('[data-export-pdf]')
+    const wordBtn = document.querySelector('[data-export-word]')
+
+    if (pdfBtn) pdfBtn.addEventListener('click', () => window.print())
+
+    if (wordBtn) wordBtn.addEventListener('click', () => {
+      if (!sessionId) {
+        notice.textContent = '还没有可复盘的会话，无法导出。'
+        notice.hidden = false
+        return
+      }
+      const a = document.createElement('a')
+      a.href = API_BASE + '/sessions/' + encodeURIComponent(sessionId) + '/export.docx'
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+    })
+  }
+
+  setupExport()
   if (root) load()
 })()
