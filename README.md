@@ -8,7 +8,7 @@
 老师语音/文字 → [ASR] → 学生角色 LLM → [TTS] → 学生语音
 ```
 
-已完成能力：**实时语音对话**、**训练记录列表**、**五维复盘评价**（督导 LLM 与学生 LLM 分离）。
+已完成能力：**实时语音全双工**、**老师侧转写与打断采集**、**训练记录列表**、**五维复盘评价（翻页）**（督导 LLM 与学生 LLM 分离）。
 
 ## 目录结构
 
@@ -54,7 +54,7 @@ tools/
 | TTS | edge-tts（免费，无需 GPU）| ✅ 已接 |
 | ASR | FunASR（自部署）| ✅ 已接 |
 | 实时语音（全双工）| 火山豆包实时语音模型 3.0（Seeduplex）| ✅ 已接 |
-| VAD / 打断 | 实时模式内置；回合制待加 | 🔜 后续 |
+| 老师侧转写 / 打断 | 实时模式：本地 FunASR + 本地 VAD 切句，插话即采集 | ✅ 已接 |
 | 存储 | SQLite（默认）/ PostgreSQL | ✅ |
 
 > 未来升级：TTS 换成 IndexTTS2（需 GPU + 情绪向量），ASR 可换讯飞/阿里，LLM 可换 Claude——都只需新增一个 Provider 实现类。
@@ -130,7 +130,9 @@ caddy run --config tools/caddy/Caddyfile
 - 浏览器 → 服务端：二进制 PCM16 / 16kHz / 单声道（20ms 一帧），JSON 控制 `{"type":"cancel|mute|unmute|finish"}`
 - 服务端 → 浏览器：`ready`（含 session_id）、二进制 pcm_s16le / 24kHz 学生语音、`event`（转写文本 / 状态）
 
-转写与回合制共用 `turns` 表，复盘照旧。
+转写与回合制共用 `turns` 表（`mode` 区分 pipeline/realtime）。老师侧不依赖火山——本地
+FunASR 旁听同一路麦克风、按本地 VAD 切句转写落库；学生播报中老师插话（打断）触发
+`cancel` → 采集窗口，把插话那半句也收进来。复盘照旧。
 
 ### REST
 
@@ -147,14 +149,15 @@ caddy run --config tools/caddy/Caddyfile
 
 - **服务端注入 / 私有角色设定**：学生「隐藏背景、表达特点、可控分支」在 `app/core/role.py` 组装成 system prompt，只在服务端，浏览器不可见。
 - **角色与评价分离**：扮学生的 LLM 与打分的督导 LLM 是两个独立 Provider，可分别换模型；评价走独立 system prompt。
-- **转写与评价持久化**：每轮对话写 `turns` 表，复盘写 `evaluations` 表（session 唯一），供回听与证据评价。
+- **转写与评价持久化**：每轮对话写 `turns` 表（`mode` 区分 pipeline/realtime），复盘写 `evaluations` 表（session 唯一），供回听与证据评价。
+- **实时老师侧转写与火山解耦**：火山 Seeduplex 双工下不吐可靠老师文字，改为本地 FunASR 旁听麦克风 + 本地 VAD 切句落库；火山链路完全不变、零影响，仅在未配 FunASR 时回退火山自带转写。
 - **不依赖单一厂商**：`providers/` 下每个环节都是接口 + 实现，换厂商只改 `.env` 的 Provider 名。
 - **模型密钥仅在服务端**：密钥、隐藏事实都在 `.env` / 服务端，前端只拿音频和文字。
 
 ## 后续路线
 
 1. 场景选择 + 谈前准备 + 可控分支（当前角色/场景服务端硬编码为「小悦 / 情绪困扰」）
-2. VAD + 打断（Silero，本地）
+2. 回合制 VAD / 打断（实时模式已内置本地 VAD + 打断采集）
 3. 真实案例库（RAG 检索）：导入页已有 UI，缺后端检索与知识库
 4. PDF / Word 报告导出
 5. TTS 升级 IndexTTS2（GPU，接 8 维情绪向量）
