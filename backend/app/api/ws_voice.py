@@ -106,11 +106,12 @@ async def ws_voice(ws: WebSocket) -> None:
 
         muted = False
         last_audio = 0.0
+        cancelled_until = 0.0          # 被用户打断后，这段时间内丢弃上行音频
         stop = asyncio.Event()
 
         async def pump_upstream() -> None:
             """浏览器 → 火山"""
-            nonlocal muted, last_audio
+            nonlocal muted, last_audio, cancelled_until
             while not stop.is_set():
                 msg = await ws.receive()
                 if msg["type"] == "websocket.disconnect":
@@ -130,7 +131,10 @@ async def ws_voice(ws: WebSocket) -> None:
                     ctl = _json.loads(text)
                 except Exception:  # noqa: BLE001
                     continue
-                if ctl.get("type") == "mute":
+                if ctl.get("type") == "cancel":
+                    # 用户打断：2 秒内不再下发音频，避免客户端停了又接着播
+                    cancelled_until = time.monotonic() + 2.0
+                elif ctl.get("type") == "mute":
                     muted = True
                 elif ctl.get("type") == "unmute":
                     muted = False
@@ -144,6 +148,8 @@ async def ws_voice(ws: WebSocket) -> None:
                 if stop.is_set():
                     return
                 if frame.audio:
+                    if time.monotonic() < cancelled_until:
+                        continue          # 被打断后的残留音频，丢掉
                     await ws.send_bytes(frame.audio)
                 elif frame.error:
                     await ws.send_json({"type": "error", "code": "upstream_error",

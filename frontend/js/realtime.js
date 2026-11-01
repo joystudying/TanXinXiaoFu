@@ -14,8 +14,8 @@ import { createAudioCapture } from './audio-capture.js';
 const GAIN = 3.0;              // ≈ +9.5 dB，把 −39 dBFS 抬到可用音量
 // 打断判定要迟钝一点：喇叭的声音会串进麦克风，阈值太低会把学生自己的话掐断。
 // 实测正常说话 RMS 约 0.05~0.30，房间噪声 0.005~0.03。
-const INTERRUPT_LEVEL = 0.12;  // 连续超过这个能量才算"老师真的开口"
-const INTERRUPT_FRAMES = 4;    // 约 80ms，避免咳嗽、键盘声误触
+const INTERRUPT_LEVEL = 0.18;  // 连续超过这个能量才算"老师真的开口"
+const INTERRUPT_FRAMES = 6;    // 约 80ms，避免咳嗽、键盘声误触
 const GUARD_MS = 400;          // 开始播放后这段时间内不判打断（躲开起播的爆音）
 
 export function realtimeSupported() {
@@ -118,7 +118,6 @@ export async function startRealtime({
         setTimeout(() => { if (sources.size === 0) setMuted(false); }, 250);
       }
     };
-    setMuted(true);                               // 播放期间静音，防回声
     onStatus?.('speaking', '学生在说…');
   }
 
@@ -210,7 +209,11 @@ export async function startRealtime({
           if (hotFrames >= INTERRUPT_FRAMES) {
             stats.flushesByBarge += 1;
             flushPlayback();
-            setMuted(false);
+            // 告诉服务端：别再推刚才那段音频了，否则本地停了它还会接着播
+            if (ws.readyState === WebSocket.OPEN) {
+              ws.send(JSON.stringify({ type: 'cancel' }));
+              stats.cancels = (stats.cancels || 0) + 1;
+            }
             onStatus?.('listening', '你打断了他');
           }
         } else {
