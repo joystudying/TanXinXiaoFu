@@ -67,6 +67,7 @@ class Case(Base):
     training_focus: Mapped[str] = mapped_column(String(128), default="")
     duration: Mapped[str] = mapped_column(String(32), default="")
     avatar: Mapped[str] = mapped_column(String(128), default="")
+    tags: Mapped[list] = mapped_column(JSON, default=list)  # 检索/筛选关键词（如 挂科、失眠）
     # 私有层（仅服务端）
     hidden_background: Mapped[str] = mapped_column(Text, default="")
     speech_style: Mapped[str] = mapped_column(Text, default="")

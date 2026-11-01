@@ -170,6 +170,53 @@ body[data-page='review'] .main {
   letter-spacing: 0.1em;
 }
 
+/* 谈前准备：可选的报告栏，带「纳入报告」开关（关闭后打印/Word 均排除）。 */
+.prep-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+}
+.prep-heading .report-section-title {
+  margin-bottom: 0;
+}
+.prep-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 4px 12px;
+  border: 1px solid var(--r-rule);
+  border-radius: 999px;
+  background: var(--r-tint);
+  font-size: 14px;
+  color: var(--r-body);
+  cursor: pointer;
+  user-select: none;
+}
+.prep-toggle input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--r-accent);
+  cursor: pointer;
+}
+.prep-note {
+  margin: 8px 0 0;
+  padding: 12px 14px;
+  border-left: 3px solid var(--r-accent);
+  border-radius: 0 8px 8px 0;
+  background: var(--r-tint);
+  font-size: 16px;
+  line-height: 1.75;
+  color: var(--r-body);
+  white-space: pre-wrap;
+}
+.report-prep.prep-excluded .prep-note {
+  opacity: 0.45;
+  text-decoration: line-through;
+  text-decoration-color: rgba(56, 68, 61, 0.6);
+}
+
 /* 二级标签：只比正文粗一点，不再是色块标题。 */
 .subsection-title {
   display: inline-flex;
@@ -799,6 +846,18 @@ body[data-page='review'] :is(a, button, [tabindex]):focus-visible {
   }
   .report-section-title > span {
     font-size: 9pt;
+  }
+  .prep-toggle {
+    display: none !important;
+  }
+  .prep-note {
+    margin-top: 1.2mm;
+    padding: 1.6mm 2.4mm;
+    font-size: 10pt;
+    line-height: 1.55;
+  }
+  .report-prep.prep-excluded {
+    display: none !important;
   }
   .subsection-title {
     margin: 2.4mm 0 1.2mm;

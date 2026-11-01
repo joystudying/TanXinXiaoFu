@@ -94,10 +94,89 @@
     ?.addEventListener('click', () => showStep(2))
   document
     .querySelector('[data-step="2"] [data-next]')
-    ?.addEventListener('click', () => showStep(3))
+    ?.addEventListener('click', generateCase)
   document
     .querySelector('[data-back]')
     ?.addEventListener('click', () => showStep(Math.max(1, currentStep - 1)))
+
+  // ---------- 生成案例：把第一步的表单 POST 到后端，写入知识库并进入检索索引 ----------
+  const API_BASE = location.protocol === 'https:' ? '' : 'http://127.0.0.1:8000'
+  const CATEGORY_KEYS = {
+    学业困难: 'academic',
+    情绪困扰: 'emotion',
+    人际关系: 'relationship',
+    家庭困境: 'family',
+    就业迷茫: 'career',
+    危机识别与联动: 'risk',
+  }
+  const notice = document.querySelector('[data-preview-notice]')
+
+  function fieldVal(id) {
+    return document.getElementById(id)?.value?.trim() || ''
+  }
+  function collectForm() {
+    const issue = fieldVal('f-issue')
+    const signal = fieldVal('f-signal')
+    const family = fieldVal('f-family')
+    const other = fieldVal('f-other')
+    return {
+      category: CATEGORY_KEYS[issue] || 'emotion',
+      name: fieldVal('f-nickname') || '小陈',
+      grade_major: `${fieldVal('f-grade')} · ${fieldVal('f-major')}`,
+      tagline: signal || '最近遇到一些事',
+      quote: '',
+      public_background: fieldVal('f-detail'),
+      goals: fieldVal('f-goals').split(/\n+/).map((s) => s.trim()).filter(Boolean),
+      training_focus: signal,
+      duration: '5–8分钟',
+      tags: [],
+      // 家庭情况 / 其他信息按「私有层」存，仅服务端进 system prompt
+      hidden_background: [family, other].filter(Boolean).join('；'),
+      speech_style: '',
+      branches: [],
+      opening: signal ? `${signal}，老师。` : '',
+    }
+  }
+
+  async function generateCase() {
+    const btn = document.querySelector('[data-step="2"] [data-next]')
+    if (btn) btn.disabled = true
+    if (notice) notice.hidden = true
+    try {
+      const res = await fetch(API_BASE + '/cases', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(collectForm()),
+      })
+      if (!res.ok) {
+        let detail = ''
+        try {
+          detail = (await res.json()).detail || ''
+        } catch (_) {}
+        throw new Error(detail || 'HTTP ' + res.status)
+      }
+      const c = await res.json()
+
+      const card = document.querySelector('[data-step="3"] .result-card')
+      const nameEl = card?.querySelector('h3')
+      const metaEl = card?.querySelector('.result-meta')
+      if (nameEl) nameEl.textContent = c.name
+      if (metaEl) metaEl.textContent = `${c.grade_major} · 导入案例`
+      const startLink = document.querySelector('[data-step="3"] a[href="conversation.html"]')
+      const detailLink = document.querySelector('[data-step="3"] a[href="case-imported.html"]')
+      if (startLink) startLink.href = 'conversation.html?case=' + encodeURIComponent(c.id)
+      if (detailLink) detailLink.href = 'details.html?case=' + encodeURIComponent(c.id)
+
+      showStep(3)
+    } catch (err) {
+      if (notice) {
+        notice.textContent = '生成案例失败：' + err.message
+        notice.hidden = false
+      }
+    } finally {
+      if (btn) btn.disabled = false
+    }
+  }
 
   updateGate()
 })()

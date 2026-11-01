@@ -206,6 +206,19 @@
       ['会话编号', sessionId ? sessionId.slice(0, 8) : '—'],
     ]
 
+    // 谈前准备：教师写过的准备笔记才展示，附「纳入报告」开关（默认纳入）。
+    const prepText = String(data.prep_note || '').trim()
+    const hasPrep = prepText.length > 0
+    const prepSectionHtml = hasPrep
+      ? '<section id="review-prep" class="report-section report-prep">' +
+        '<div class="prep-heading">' +
+        '<h2 class="report-section-title">谈前准备</h2>' +
+        '<label class="prep-toggle"><input type="checkbox" checked data-prep-toggle /><span data-prep-label>纳入报告</span></label>' +
+        '</div>' +
+        '<div class="prep-note">' + escapeHtml(prepText) + '</div>' +
+        '</section>'
+      : ''
+
     const dimensionRows = dims
       .map(
         (d) =>
@@ -248,6 +261,7 @@
         )
         .join('') +
       '</dl>' +
+      prepSectionHtml +
       '<section id="review-verdict" class="report-section">' +
       '<h2 class="report-section-title"><span aria-hidden="true">一</span>整体评价</h2>' +
       '<div class="verdict-summary">' +
@@ -320,6 +334,23 @@
 
     setupPagination()
 
+    // 谈前准备：目录链接显隐 + 「纳入报告」开关（关闭后打印/Word 均不再纳入）
+    const prepLink = document.querySelector('[data-prep-link]')
+    if (prepLink) prepLink.hidden = !hasPrep
+    if (hasPrep) {
+      const prepEl = root.querySelector('.report-prep')
+      const toggle = root.querySelector('[data-prep-toggle]')
+      if (prepEl && toggle) {
+        const applyPrep = () => {
+          prepEl.classList.toggle('prep-excluded', !toggle.checked)
+          const label = toggle.closest('label') && toggle.closest('label').querySelector('[data-prep-label]')
+          if (label) label.textContent = toggle.checked ? '纳入报告' : '已从报告中排除'
+        }
+        toggle.addEventListener('change', applyPrep)
+        applyPrep()
+      }
+    }
+
     // 重新水合图标（"再练一次"按钮里的 refresh 图标）
     if (window.hydrateIcons) window.hydrateIcons(root)
   }
@@ -381,8 +412,12 @@
         notice.hidden = false
         return
       }
+      // 尊重「纳入报告」开关：未勾选时 Word 也不含谈前准备。
+      const prepToggle = document.querySelector('[data-prep-toggle]')
+      const includePrep = prepToggle ? prepToggle.checked : true
       const a = document.createElement('a')
-      a.href = API_BASE + '/sessions/' + encodeURIComponent(sessionId) + '/export.docx'
+      a.href = API_BASE + '/sessions/' + encodeURIComponent(sessionId) + '/export.docx' +
+        (includePrep ? '' : '?include_prep=0')
       document.body.appendChild(a)
       a.click()
       a.remove()

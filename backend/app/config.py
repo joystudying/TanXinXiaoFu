@@ -45,6 +45,12 @@ class Settings(BaseSettings):
         """真双工是否可用：App ID 与 API Key 都填了才算。"""
         return bool(self.volc_app_id.strip() and self.volc_api_key.strip())
 
+    # 案例检索（可插拔：embedding 模型 + 向量库，换实现只改 .env）
+    embedding_provider: str = "fastembed"  # fastembed（本地 BGE，离线无密钥）
+    embedding_model: str = "BAAI/bge-small-zh-v1.5"
+    vectorstore_provider: str = "qdrant"  # qdrant（本地嵌入式模式）
+    qdrant_path: str = "./data/qdrant"
+
     # 存储
     database_url: str = "sqlite+aiosqlite:///./data/app.db"
 

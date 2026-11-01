@@ -466,6 +466,23 @@ textarea::placeholder {
   width: 16px;
   height: 16px;
 }
+.search-match-badge {
+  padding: 2px 9px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 650;
+  line-height: 1.6;
+}
+.search-match-badge.is-keyword {
+  background: #e7f1ec;
+  color: #075c41;
+  border: 1px solid #a9cfba;
+}
+.search-match-badge.is-semantic {
+  background: #eef1f7;
+  color: #3a4a78;
+  border: 1px solid #c2cbe4;
+}
 .case-action {
   align-self: center;
 }

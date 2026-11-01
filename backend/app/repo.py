@@ -133,6 +133,7 @@ def case_to_dict(c: Case) -> dict:
         "training_focus": c.training_focus,
         "duration": c.duration,
         "avatar": c.avatar,
+        "tags": c.tags or [],
         "hidden_background": c.hidden_background,
         "speech_style": c.speech_style,
         "branches": c.branches or [],
@@ -155,6 +156,16 @@ async def get_case(case_id: str) -> Case | None:
     async with SessionLocal() as session:
         result = await session.execute(select(Case).where(Case.id == case_id))
         return result.scalar_one_or_none()
+
+
+async def create_case(data: dict) -> Case:
+    """新增一个案例（导入/自建），写进 cases 表；随后由调用方重建检索索引。"""
+    async with SessionLocal() as session:
+        c = Case(**data)
+        session.add(c)
+        await session.commit()
+        await session.refresh(c)
+        return c
 
 
 async def seed_cases_if_empty(cases: list[dict]) -> None:

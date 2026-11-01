@@ -15,6 +15,13 @@ from .ws.voice import router as voice_router
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await init_db()
+    # 案例检索索引：dense + sparse 索引进 Qdrant（首次会下载 BGE 模型，几秒）
+    from .core import retrieval
+
+    try:
+        await retrieval.reindex_all()
+    except Exception as e:  # 检索失败不阻断启动（模型未下载 / Qdrant 异常时降级）
+        print(f"[retrieval] 索引建立失败，混合检索暂不可用：{e}")
     yield
 
 

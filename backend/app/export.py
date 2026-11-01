@@ -49,7 +49,7 @@ def _split_items(text):
     return [text.strip()] if text and text.strip() else []
 
 
-def build_review_docx(evaluation, turns, session_id: str) -> bytes:
+def build_review_docx(evaluation, turns, session_id: str, prep_note: str = "") -> bytes:
     doc = Document()
     normal = doc.styles["Normal"]
     normal.font.name = _FONT
@@ -77,6 +77,12 @@ def build_review_docx(evaluation, turns, session_id: str) -> bytes:
         p = doc.add_paragraph()
         _style(p.add_run(f"{k}："), size=10.5, bold=True)
         _style(p.add_run(v), size=10.5)
+
+    # 谈前准备（教师可选择是否纳入，未纳入时 prep_note 传空即整段不生成）
+    if prep_note and prep_note.strip():
+        _heading(doc, "谈前准备")
+        for line in _split_items(prep_note):
+            _para(doc, line)
 
     _heading(doc, "一、整体评价")
     _para(doc, evaluation.summary or "（无）")

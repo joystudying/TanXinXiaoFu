@@ -58,10 +58,13 @@
     return String(name || '').replace(/^小/, '')
   }
 
-  function caseRowHTML(c) {
+  function caseRowHTML(c, matchBadge) {
     const lead = c.avatar
       ? `<img class="case-portrait" src="${escapeHtml(c.avatar)}" alt="${escapeHtml(c.name)}" />`
       : `<span class="case-initial" aria-hidden="true">${escapeHtml(initialOf(c.name))}</span>`
+    const badge = matchBadge
+      ? `<span class="search-match-badge ${matchBadge === 'keyword' ? 'is-keyword' : 'is-semantic'}">${matchBadge === 'keyword' ? '关键词命中' : '语义相近'}</span>`
+      : ''
     return (
       `<article class="case-row" data-case-row data-category="${escapeHtml(c.category)}">${lead}` +
       `<div class="case-copy">` +
@@ -69,6 +72,7 @@
       `<h3>${escapeHtml(c.tagline)}</h3>` +
       `<p>${escapeHtml(c.quote)}</p>` +
       `<div class="case-meta">` +
+      badge +
       `<span data-icon="target"></span><span>${escapeHtml(c.training_focus)}</span>` +
       `<span><span data-icon="clock"></span>${escapeHtml(c.duration)}</span>` +
       `</div></div>` +
@@ -97,8 +101,11 @@
       return
     }
 
-    caseList.innerHTML = cases.map(caseRowHTML).join('')
-    if (window.hydrateIcons) window.hydrateIcons(caseList)
+    function renderAllCases() {
+      caseList.innerHTML = cases.map((c) => caseRowHTML(c)).join('')
+      if (window.hydrateIcons) window.hydrateIcons(caseList)
+    }
+    renderAllCases()
 
     // 「我的案例」条：指向第一个案例，替换旧的静态示例
     if (myBar && cases.length) {
@@ -119,32 +126,76 @@
     }
     function applyFilter() {
       const category = activeCategory()
-      const query = search?.value.trim() ?? ''
-      let visible = 0
+      const [t, d] = CATEGORY_TITLES[category]
+      titleEl.textContent = t
+      descEl.textContent = d
+      if (empty) empty.hidden = true
       document.querySelectorAll('[data-case-row]').forEach((row) => {
-        const matches =
-          row.dataset.category === category && (!query || row.textContent.includes(query))
-        row.hidden = !matches
-        if (matches) visible += 1
+        row.hidden = row.dataset.category !== category
       })
-      if (empty) empty.hidden = visible > 0
+    }
+
+    // 混合检索：输入非空时走后端 /cases/search（关键词 + 语义），清空则回到分类浏览
+    function renderSearchResults(results, query) {
+      titleEl.textContent = '搜索结果'
+      descEl.textContent = `「${query}」 · 关键词 + 语义混合匹配`
+      if (!results.length) {
+        caseList.innerHTML = ''
+        if (empty) {
+          empty.hidden = false
+          const h = empty.querySelector('h3')
+          if (h) h.textContent = '没有找到匹配的案例'
+        }
+        return
+      }
+      if (empty) empty.hidden = true
+      caseList.innerHTML = results.map((c) => caseRowHTML(c, c.matched_by)).join('')
+      if (window.hydrateIcons) window.hydrateIcons(caseList)
+    }
+
+    let searchTimer = null
+    async function runSearch(query) {
+      if (!query) return
+      try {
+        const results = await getJSON('/cases/search?q=' + encodeURIComponent(query))
+        if ((search?.value.trim() ?? '') !== query) return // 结果已过期
+        renderSearchResults(results, query)
+      } catch (err) {
+        if ((search?.value.trim() ?? '') !== query) return
+        caseList.innerHTML =
+          '<div class="empty-state"><span data-icon="search"></span><h3>搜索失败</h3>' +
+          '<p>' + escapeHtml(err.message) + '</p></div>'
+        if (empty) empty.hidden = true
+        if (window.hydrateIcons) window.hydrateIcons(caseList)
+      }
+    }
+
+    function resetToCategories() {
+      clearTimeout(searchTimer)
+      if (search) search.value = ''
+      renderAllCases()
+      applyFilter()
     }
 
     catButtons.forEach((btn) =>
       btn.addEventListener('click', () => {
         catButtons.forEach((b) => b.setAttribute('aria-pressed', String(b === btn)))
-        const [t, d] = CATEGORY_TITLES[btn.dataset.category]
-        titleEl.textContent = t
-        descEl.textContent = d
-        if (search) search.value = ''
-        applyFilter()
+        resetToCategories()
       }),
     )
-    search?.addEventListener('input', applyFilter)
+    search?.addEventListener('input', () => {
+      const q = search.value.trim()
+      clearTimeout(searchTimer)
+      if (!q) {
+        renderAllCases()
+        applyFilter()
+        return
+      }
+      searchTimer = setTimeout(() => runSearch(q), 300)
+    })
     clear?.addEventListener('click', () => {
-      search.value = ''
-      applyFilter()
-      search.focus()
+      resetToCategories()
+      search?.focus()
     })
     applyFilter()
   }

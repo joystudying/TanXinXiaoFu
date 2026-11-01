@@ -50,3 +50,37 @@ class EvaluatorProvider(ABC):
     @abstractmethod
     async def evaluate(self, transcript: str, rubric: str, **kwargs) -> EvaluationResult:
         """对话转写 + 评分要点 -> 结构化复盘评价。"""
+
+
+class DenseEmbedder(ABC):
+    """文本 -> 稠密向量（可插拔 embedding，如本地 BGE / 任意 OpenAI 兼容 API）。"""
+
+    @abstractmethod
+    def embed(self, texts: list[str]) -> list[list[float]]:
+        """一批文本 -> 一批等长向量。"""
+
+    @abstractmethod
+    def dim(self) -> int:
+        """向量维度。"""
+
+
+class VectorStore(ABC):
+    """向量库（可插拔，如 Qdrant / Milvus / pgvector），支持 dense+sparse 混合检索。"""
+
+    @abstractmethod
+    def recreate(self, collection: str, dim: int) -> None:
+        """（重）建集合：稠密向量 + 稀疏向量两个命名向量。"""
+
+    @abstractmethod
+    def upsert(self, collection: str, points: list[dict]) -> None:
+        """写入/覆盖一批点。point: {id, dense:[...], sparse:{idx:val}, payload:{...}}"""
+
+    @abstractmethod
+    def hybrid_search(
+        self, collection: str, dense: list[float], sparse: dict, limit: int
+    ) -> list[dict]:
+        """dense + sparse 双路召回 + RRF 融合，返回 [{id, score}]。"""
+
+    @abstractmethod
+    def exists(self, collection: str) -> bool:
+        """集合是否存在且非空。"""

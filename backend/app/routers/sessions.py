@@ -32,7 +32,8 @@ class ReviewResponse(BaseModel):
     dimensions: list
     summary: str
     suggestions: str
-    turns: list = []   # [{role, mode, text}]，按发言顺序，供前端展示完整对话
+    turns: list = []        # [{role, mode, text}]，按发言顺序，供前端展示完整对话
+    prep_note: str = ""     # 谈前准备笔记快照，供复盘报告「谈前准备」一栏（教师可选择是否纳入）
 
 
 class SessionSummary(BaseModel):
@@ -112,24 +113,17 @@ async def _ensure_review(session_id: str):
 @router.post("/{session_id}/review", response_model=ReviewResponse)
 async def create_review(session_id: str) -> ReviewResponse:
     e = await _ensure_review(session_id)
-    turns = await list_turns(session_id)
-    return ReviewResponse(
-        session_id=session_id,
-        scenario=e.scenario,
-        total_score=e.total_score,
-        dimensions=e.dimensions,
-        summary=e.summary,
-        suggestions=e.suggestions,
-        turns=[{"role": t.role, "mode": t.mode, "text": t.text} for t in turns],
-    )
+    return await _to_response(session_id, e)
 
 
 @router.get("/{session_id}/export.docx")
-async def export_docx(session_id: str):
-    """导出 Word 版复盘报告（.docx），一键下载。"""
+async def export_docx(session_id: str, include_prep: bool = True):
+    """导出 Word 版复盘报告（.docx），一键下载；include_prep=0 可不纳入谈前准备。"""
     e = await _ensure_review(session_id)
     turns = await list_turns(session_id)
-    docx_bytes = build_review_docx(e, turns, session_id)
+    s = await get_session(session_id)
+    prep_note = (s.prep_note or "") if (include_prep and s) else ""
+    docx_bytes = build_review_docx(e, turns, session_id, prep_note)
     filename = f"review-{session_id[:8]}.docx"
     return StreamingResponse(
         BytesIO(docx_bytes),
@@ -140,6 +134,7 @@ async def export_docx(session_id: str):
 
 async def _to_response(session_id: str, e) -> ReviewResponse:
     turns = await list_turns(session_id)
+    s = await get_session(session_id)
     return ReviewResponse(
         session_id=session_id,
         scenario=e.scenario,
@@ -148,4 +143,5 @@ async def _to_response(session_id: str, e) -> ReviewResponse:
         summary=e.summary,
         suggestions=e.suggestions,
         turns=[{"role": t.role, "mode": t.mode, "text": t.text} for t in turns],
+        prep_note=(s.prep_note or "") if s else "",
     )

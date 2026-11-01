@@ -30,12 +30,14 @@ flowchart LR
 
 | 能力 | 说明 |
 |------|------|
-| 🎭 案例库（18 例） | 6 类 × 3 例，公开层给前端、私有层仅服务端，存数据库 |
+| 🎭 案例库（18 例内置 + 可导入） | 6 类 × 3 例种子，公开层给前端、私有层仅服务端；导入页可自建案例入库 |
 | 🎙️ 实时语音全双工 | 火山豆包 Seeduplex，边说边听、插话即打断 |
 | ✍️ 老师侧转写与打断采集 | 本地 FunASR 旁听麦克风切句，插话也收录 |
 | 🗣️ 语音 / 文字双通道 | 回合制 `/ws/chat` + 真双工 `/ws/voice` |
 | 📋 训练记录 | 按会话聚合，展示时间 / 轮数 / 得分 |
 | 📊 五维复盘评价 | 三页翻页报告，督导 LLM 与学生 LLM 分离 |
+| 📝 谈前准备纳入复盘 | 案例详情写准备笔记 → 建会话；复盘报告「谈前准备」栏可一键纳入/排除（PRD 9.3）|
+| 🔎 案例混合检索 | 关键词（BM25）+ 语义（BGE）RRF 融合，场景页搜索即推荐；支持导入/自建案例入库 |
 | 📄 PDF / Word 导出 | Word 后端生成，PDF 浏览器打印 |
 
 ## 🏗️ 目录结构
@@ -50,15 +52,19 @@ backend/                   FastAPI 服务端（编排 + 可插拔 Provider + 持
     core/
       role.py              学生角色/隐藏事实 → system prompt（仅服务端）
       cases.py             案例库种子：6 类 × 3 例 = 18 条（公开/私有两层）
+      retrieval.py         案例混合检索编排（索引 / 检索 / 融合）
+      bm25.py              中文 BM25 稀疏向量（jieba 分词 + 哈希 + IDF）
       orchestrator.py      对话编排
       evaluator.py         复盘评分要点 + 转写组装
-    providers/             ASR / LLM / TTS / Evaluator 接口与实现（换厂商=改配置）
+    providers/             ASR / LLM / TTS / Evaluator / Embedding / VectorStore（换厂商=改配置）
       llm_deepseek.py      学生 LLM
       evaluator_deepseek.py 督导 LLM（评价，角色与评价分离）
+      embedder_fastembed.py 本地 BGE 稠密向量（onnx，无密钥）
+      vectorstore_qdrant.py Qdrant 向量库（本地嵌入式，dense+sparse+RRF）
       asr_funasr.py / tts_edge.py / *_stub.py
     export.py              复盘报告导出（Word .docx）
     routers/sessions.py    REST：谈前准备 + 训练记录 + 复盘 + 导出
-    routers/cases.py       REST：案例列表 / 详情（只暴露公开层）
+    routers/cases.py       REST：案例列表 / 详情 / 混合检索 / 导入（只暴露公开层）
     ws/chat.py             WebSocket 对话（文字/语音，回合制）
     ws/voice.py            WebSocket 实时语音（真双工，火山 Seeduplex）
   services/
@@ -66,13 +72,13 @@ backend/                   FastAPI 服务端（编排 + 可插拔 Provider + 持
   requirements.txt
   .env.example             配置模板（复制为 .env 填密钥）
 frontend/             原生 HTML 前端（无需构建）
-  index.html + cases.js         场景选择（案例库动态渲染，接 GET /cases）
+  index.html + cases.js         场景选择（案例库动态渲染 + 混合检索搜索，接 GET /cases、/cases/search）
   conversation.html + voice.js  谈话训练（语音/文字，接后端）
   js/audio-capture.js 等        实时通话底层（收音 + 播放 + 打断，接 /ws/voice）
   records.html + records.js     训练记录列表（接 GET /sessions）
   review.html + review.js       复盘报告（接 GET/POST /sessions/{id}/review）
   details.html + cases.js       案例详情 + 谈前准备（接 GET /cases/{id} + POST /sessions）
-  import.html / import.js       导入案例（旧 UI，待接后端知识库）
+  import.html / import.js       导入/自建案例（POST /cases，写入知识库 + 检索索引）
   shared.js / styles.css        公共布局与样式
 tools/
   caddy/Caddyfile          静态页面 + /ws/*、/cases、/sessions 反向代理（监听 5180）
@@ -90,6 +96,9 @@ tools/
 | 老师侧转写 / 打断 | 本地 FunASR + 本地 VAD | 旁听麦克风切句落库，与火山链路解耦 |
 | 数据库 | **PostgreSQL**（SQLAlchemy 2.0 异步 + asyncpg）| 表：`cases`（案例）、`turns`（对话）、`evaluations`（复盘）、`sessions`（会话）；改 `DATABASE_URL` 可切回 SQLite |
 | 报告导出 | **python-docx**（Word）+ 浏览器打印（PDF）| Word 走 `/sessions/{id}/export.docx`，PDF 走前端打印 CSS |
+| 向量模型 | **BGE**（`bge-small-zh-v1.5`，fastembed/onnx 本地跑）| 语义向量，离线无密钥，可插拔换 `bge-m3` 或 OpenAI 兼容 API |
+| 向量库 | **Qdrant**（本地嵌入式模式）| dense + sparse 两个命名向量，RRF 混合检索，落盘持久化 |
+| 关键词检索 | **jieba 分词 + BM25 稀疏向量** | 与语义向量同库，`/cases/search` 融合召回 |
 | Web 框架 | **FastAPI** + WebSocket | REST + 两条 WS：`/ws/chat`、`/ws/voice` |
 | 前端 | 原生 HTML / JS（无构建）| 不依赖 Vue / React |
 
@@ -116,6 +125,7 @@ cp .env.example .env        # 编辑 .env：填 DEEPSEEK_API_KEY
                             # 可选：填 VOLC_APP_ID + VOLC_API_KEY 解锁「实时通话」
                             # 数据库默认 SQLite 开箱即用；要用 PostgreSQL 改成：
                             #   DATABASE_URL=postgresql+asyncpg://user:pwd@host:5432/db
+                            # 案例检索默认本地 BGE + Qdrant；首次启动会自动下载 embedding 模型（约百 MB）
 
 uvicorn app.main:app --port 8000
 ```
@@ -180,13 +190,15 @@ FunASR 旁听同一路麦克风、按本地 VAD 切句转写落库；学生播�
 |------|------|------|
 | GET | `/health` | 健康检查 |
 | GET | `/cases` | 案例库列表（18 例，仅公开层）|
+| GET | `/cases/search?q=` | 混合检索：关键词（BM25）+ 语义（BGE）RRF 融合，返回相关度排序 + 匹配原因 |
+| POST | `/cases` | 导入/自建案例，写入库并重建检索索引 |
 | GET | `/cases/{id}` | 案例详情（仅公开层：背景 + 训练目标）|
 | POST | `/sessions` | 谈前准备：按案例建会话 + 保存准备笔记 |
 | GET | `/sessions/{id}/prep` | 读取某会话的准备笔记 |
 | GET | `/sessions` | 训练记录列表（时间/轮数/是否已复盘/得分）|
 | GET | `/sessions/{id}/review` | 读取已生成的复盘 |
 | POST | `/sessions/{id}/review` | 生成复盘（五维评分 + 证据 + 建议）|
-| GET | `/sessions/{id}/export.docx` | 下载 Word 版复盘报告 |
+| GET | `/sessions/{id}/export.docx` | 下载 Word 版复盘报告（`?include_prep=0` 可不纳入谈前准备）|
 
 复盘五维：共情引导、思想引领、问题解决、临场应变、语言表达，各 0–20，合计 100。
 
@@ -195,6 +207,8 @@ FunASR 旁听同一路麦克风、按本地 VAD 切句转写落库；学生播�
 - **案例库公开 / 私有两层**：`app/core/cases.py` 定义 18 个案例；`GET /cases*` 只出公开层，私有层（隐藏背景、表达特点、分支、开场白）经 `case_to_role` 只在服务端进 system prompt，浏览器不可见。
 - **角色与评价分离**：扮学生的 LLM 与打分的督导 LLM 是两个独立 Provider，可分别换模型；评价走独立 system prompt。
 - **转写与评价持久化**：每轮对话写 `turns` 表（`mode` 区分 pipeline/realtime），复盘写 `evaluations` 表（session 唯一），供回听与证据评价。
+- **准备笔记纳入复盘**：`POST /sessions` 时保存谈前准备快照；复盘报告「谈前准备」栏默认纳入，教师可一键排除（前端开关 + Word 导出 `include_prep=0`）。
+- **案例混合检索（关键词 + 语义）**：公开字段 + 标签拼成检索文本，jieba 分词做 BM25 稀疏向量、BGE 做稠密向量，同存 Qdrant 用 RRF 融合；私有层仍只进 system prompt、不进检索文本。
 - **实时老师侧转写与火山解耦**：火山 Seeduplex 双工下不吐可靠老师文字，改为本地 FunASR 旁听麦克风 + 本地 VAD 切句落库；火山链路完全不变、零影响，仅在未配 FunASR 时回退火山自带转写。
 - **不依赖单一厂商**：`providers/` 下每个环节都是接口 + 实现，换厂商只改 `.env` 的 Provider 名。
 - **模型密钥仅在服务端**：密钥、隐藏事实都在 `.env` / 服务端，前端只拿音频和文字。
@@ -202,7 +216,5 @@ FunASR 旁听同一路麦克风、按本地 VAD 切句转写落库；学生播�
 ## 🗺️ 后续路线
 
 1. 案例私有层定稿审核（尤其「危机识别与联动」3 例，初稿需专业人员复核）
-2. 准备笔记纳入复盘报告（PRD 9.3：教师可选择是否纳入）
-3. 案例库扩展 / RAG 检索（当前 18 例为内置种子，导入页 UI 待接后端知识库）
-4. 回合制 VAD / 打断（实时模式已内置本地 VAD + 打断采集）
-5. TTS 升级 IndexTTS2（GPU，接 8 维情绪向量）
+2. 回合制 VAD / 打断（实时模式已内置本地 VAD + 打断采集）
+3. TTS 升级 IndexTTS2（GPU，接 8 维情绪向量）
