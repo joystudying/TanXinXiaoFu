@@ -8,7 +8,7 @@
 老师语音/文字 → [ASR] → 学生角色 LLM → [TTS] → 学生语音
 ```
 
-已完成能力：**实时语音全双工**、**老师侧转写与打断采集**、**训练记录列表**、**五维复盘评价（翻页）**（督导 LLM 与学生 LLM 分离）。
+已完成能力：**实时语音全双工**、**老师侧转写与打断采集**、**训练记录列表**、**五维复盘评价（三页翻页）**（督导 LLM 与学生 LLM 分离）、**PDF / Word 报告导出**。
 
 ## 目录结构
 
@@ -27,8 +27,10 @@ backend/                   FastAPI 服务端（编排 + 可插拔 Provider + 持
       llm_deepseek.py      学生 LLM
       evaluator_deepseek.py 督导 LLM（评价，角色与评价分离）
       asr_funasr.py / tts_edge.py / *_stub.py
-    routers/sessions.py    REST：训练记录 + 复盘
-    ws/chat.py             WebSocket 实时对话（文字/语音）
+    export.py              复盘报告导出（Word .docx）
+    routers/sessions.py    REST：训练记录 + 复盘 + 导出
+    ws/chat.py             WebSocket 对话（文字/语音，回合制）
+    ws/voice.py            WebSocket 实时语音（真双工，火山 Seeduplex）
   services/
     funasr_server.py       独立 FunASR 识别服务（自部署）
   requirements.txt
@@ -47,17 +49,22 @@ tools/
 
 ## 技术栈（可插拔）
 
-| 环节 | 默认实现 | 状态 |
+| 环节 | 用的什么 | 说明 |
 |------|----------|------|
-| LLM（扮学生）| DeepSeek | ✅ 已接 |
-| 评价 LLM（督导）| DeepSeek（独立模型/提示词）| ✅ 已接 |
-| TTS | edge-tts（免费，无需 GPU）| ✅ 已接 |
-| ASR | FunASR（自部署）| ✅ 已接 |
-| 实时语音（全双工）| 火山豆包实时语音模型 3.0（Seeduplex）| ✅ 已接 |
-| 老师侧转写 / 打断 | 实时模式：本地 FunASR + 本地 VAD 切句，插话即采集 | ✅ 已接 |
-| 存储 | SQLite（默认）/ PostgreSQL | ✅ |
+| LLM（扮学生）| **DeepSeek** | OpenAI 兼容接口（`openai` SDK） |
+| 评价 LLM（督导）| **DeepSeek**（独立 Provider）| 与扮学生的 LLM 分离，可单独换模型 |
+| ASR（语音识别）| **FunASR**（阿里达摩院）| 自部署批式服务（8001 端口），模型 `paraformer-zh` + `fsmn-vad`，标点模型关闭（避免中文被拆成单字） |
+| TTS（语音合成）| **edge-tts** | 微软 Edge 免费在线语音，输出 mp3，无需 GPU / 密钥 |
+| 实时语音（全双工）| **火山豆包实时语音 3.0（Seeduplex）** | 仅配置 VOLC 密钥后可用 |
+| 老师侧转写 / 打断 | 本地 FunASR + 本地 VAD | 旁听麦克风切句落库，与火山链路解耦 |
+| 数据库 | **SQLite**（SQLAlchemy 2.0 异步 + aiosqlite）| 表：`turns`（对话）、`evaluations`（复盘）；改 `DATABASE_URL` 可切 PostgreSQL |
+| 报告导出 | **python-docx**（Word）+ 浏览器打印（PDF）| Word 走 `/sessions/{id}/export.docx`，PDF 走前端打印 CSS |
+| Web 框架 | **FastAPI** + WebSocket | REST + 两条 WS：`/ws/chat`、`/ws/voice` |
+| 前端 | 原生 HTML / JS（无构建）| 不依赖 Vue / React |
 
-> 未来升级：TTS 换成 IndexTTS2（需 GPU + 情绪向量），ASR 可换讯飞/阿里，LLM 可换 Claude——都只需新增一个 Provider 实现类。
+> 可插拔：`providers/` 下每个环节都是「接口 + 实现」，换厂商只改 `.env` 的 Provider 名，不动业务代码。密钥与隐藏事实都只在服务端。
+>
+> 未来升级：TTS 换 IndexTTS2（需 GPU + 情绪向量），ASR 可换讯飞/阿里云，LLM 可换 Claude——都只需新增一个 Provider 实现类。
 
 ## 快速开始
 
@@ -159,6 +166,5 @@ FunASR 旁听同一路麦克风、按本地 VAD 切句转写落库；学生播�
 1. 场景选择 + 谈前准备 + 可控分支（当前角色/场景服务端硬编码为「小悦 / 情绪困扰」）
 2. 回合制 VAD / 打断（实时模式已内置本地 VAD + 打断采集）
 3. 真实案例库（RAG 检索）：导入页已有 UI，缺后端检索与知识库
-4. PDF / Word 报告导出
-5. TTS 升级 IndexTTS2（GPU，接 8 维情绪向量）
-6. 危机专项（风险识别与转介）
+4. TTS 升级 IndexTTS2（GPU，接 8 维情绪向量）
+5. 危机专项（风险识别与转介）
